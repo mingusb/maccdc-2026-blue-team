@@ -11,22 +11,30 @@ API_KEY=""
 INSECURE=true
 BACKUP_DIR=""
 RESTORE_FROM=""
+MGMT_IPS=""
+DISABLE_HTTP=true
+DISABLE_TELNET=true
+ALLOW_UNSAFE=false
 
 usage() {
   cat <<'USAGE'
 Usage: palo_alto_manage.sh [options]
 
 Modes:
-  list | summary | dry-run | apply | backup | restore
+  list | summary | dry-run | harden | apply | backup | restore
 
 Options:
-  --mode <list|dry-run|apply|backup|restore>
+  --mode <list|summary|dry-run|harden|apply|backup|restore>
   --host <ip>             Palo Alto management IP
   --user <user>           Username (default: admin)
   --pass <pass>           Password (required if no --key)
   --key <api_key>         API key (optional)
   --insecure              Skip TLS verify (default)
   --secure                Enforce TLS verify
+  --mgmt-ips <csv>         Comma-separated mgmt allow-list (e.g., 172.20.242.0/24)
+  --allow-unsafe           Skip mgmt allow-list requirement
+  --enable-http            Do not disable HTTP management
+  --enable-telnet          Do not disable Telnet management
   --backup-dir <path>     Backup directory
   --restore-from <path>   Restore from config XML file
 USAGE
@@ -77,6 +85,30 @@ get_key() {
 api_op() {
   local cmd="$1"
   curl $(curl_opts) "https://${HOST}/api/?type=op&cmd=${cmd}&key=${API_KEY}"
+}
+
+api_config_set() {
+  local xpath="$1"
+  local element="$2"
+  curl $(curl_opts) \
+    --data-urlencode "type=config" \
+    --data-urlencode "action=set" \
+    --data-urlencode "xpath=${xpath}" \
+    --data-urlencode "element=${element}" \
+    --data-urlencode "key=${API_KEY}" \
+    "https://${HOST}/api/"
+}
+
+api_config_edit() {
+  local xpath="$1"
+  local element="$2"
+  curl $(curl_opts) \
+    --data-urlencode "type=config" \
+    --data-urlencode "action=edit" \
+    --data-urlencode "xpath=${xpath}" \
+    --data-urlencode "element=${element}" \
+    --data-urlencode "key=${API_KEY}" \
+    "https://${HOST}/api/"
 }
 
 probe() {
@@ -135,10 +167,21 @@ list_summary() {
 
 plan_changes() {
   log "Planned changes"
-  if [ -n "$RESTORE_FROM" ]; then
-    echo "- Would import and load config from $RESTORE_FROM"
-  else
-    echo "- No config file specified for apply/restore"
+  if [ "$MODE" = "apply" ] || [ "$MODE" = "restore" ]; then
+    if [ -n "$RESTORE_FROM" ]; then
+      echo "- Would import and load config from $RESTORE_FROM"
+    else
+      echo "- No config file specified for apply/restore"
+    fi
+  fi
+  if [ -n "$MGMT_IPS" ]; then
+    echo "- Would set management permitted IPs: $MGMT_IPS"
+  fi
+  if $DISABLE_HTTP; then
+    echo "- Would disable HTTP management"
+  fi
+  if $DISABLE_TELNET; then
+    echo "- Would disable Telnet management"
   fi
 }
 
@@ -200,6 +243,45 @@ restore_configs() {
   log "Restore applied from: $RESTORE_FROM"
 }
 
+require_mgmt_ips() {
+  if $ALLOW_UNSAFE; then
+    return
+  fi
+  if [ -z "$MGMT_IPS" ]; then
+    fatal "--mgmt-ips is required for harden (use --allow-unsafe to override)"
+  fi
+}
+
+harden_device() {
+  local xpath_base
+  local members=""
+  xpath_base="/config/devices/entry[@name='localhost.localdomain']/deviceconfig/system"
+
+  require_mgmt_ips
+
+  if [ -n "$MGMT_IPS" ]; then
+    while read -r ip; do
+      ip="$(echo "$ip" | xargs)"
+      [ -n "$ip" ] && members="${members}<member>${ip}</member>"
+    done < <(echo "$MGMT_IPS" | tr ',' '\n')
+    api_config_edit "${xpath_base}/permitted-ip" "${members}" >/dev/null
+  fi
+
+  if $DISABLE_HTTP; then
+    api_config_set "${xpath_base}/service" "<disable-http>yes</disable-http>" >/dev/null
+  fi
+  if $DISABLE_TELNET; then
+    api_config_set "${xpath_base}/service" "<disable-telnet>yes</disable-telnet>" >/dev/null
+  fi
+
+  curl $(curl_opts) \
+    --data-urlencode "type=commit" \
+    --data-urlencode "cmd=<commit></commit>" \
+    --data-urlencode "key=${API_KEY}" \
+    "https://${HOST}/api/" >/dev/null
+  log "Commit requested"
+}
+
 parse_args() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -210,6 +292,10 @@ parse_args() {
       --key) API_KEY="$2"; shift 2 ;;
       --insecure) INSECURE=true; shift ;;
       --secure) INSECURE=false; shift ;;
+      --mgmt-ips) MGMT_IPS="$2"; shift 2 ;;
+      --allow-unsafe) ALLOW_UNSAFE=true; shift ;;
+      --enable-http) DISABLE_HTTP=false; shift ;;
+      --enable-telnet) DISABLE_TELNET=false; shift ;;
       --backup-dir) BACKUP_DIR="$2"; shift 2 ;;
       --restore-from) RESTORE_FROM="$2"; shift 2 ;;
       --summary) MODE="summary"; shift ;;
@@ -229,6 +315,12 @@ main() {
     summary)
       probe
       list_summary
+      ;;
+    harden)
+      probe
+      plan_changes
+      backup_configs
+      harden_device
       ;;
     dry-run)
       probe
