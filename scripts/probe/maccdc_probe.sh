@@ -45,21 +45,14 @@ summary() {
   fi
 
   echo "## listeners (key ports)"
-  local key_ports='^(22|25|53|80|110|143|443|587|993|995)$'
-  local tcp_ports=""
-  local udp_ports=""
+  local listeners=""
   if [ -n "$SUDO" ]; then
-    tcp_ports="$($SUDO ss -H -ltn 2>/dev/null | awk '{print $5}' | sed 's/.*://' | sort -n | uniq | grep -E "$key_ports" | paste -sd, - || true)"
-    udp_ports="$($SUDO ss -H -lun 2>/dev/null | awk '{print $5}' | sed 's/.*://' | sort -n | uniq | grep -E "$key_ports" | paste -sd, - || true)"
+    listeners="$($SUDO ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)([^0-9]|$)' | sed -n '1,5p' || true)"
   else
-    tcp_ports="$(ss -H -ltn 2>/dev/null | awk '{print $5}' | sed 's/.*://' | sort -n | uniq | grep -E "$key_ports" | paste -sd, - || true)"
-    udp_ports="$(ss -H -lun 2>/dev/null | awk '{print $5}' | sed 's/.*://' | sort -n | uniq | grep -E "$key_ports" | paste -sd, - || true)"
+    listeners="$(ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)([^0-9]|$)' | sed -n '1,5p' || true)"
   fi
-  if [ -n "$tcp_ports" ] || [ -n "$udp_ports" ]; then
-    line=""
-    [ -n "$tcp_ports" ] && line="tcp: ${tcp_ports}"
-    [ -n "$udp_ports" ] && line="${line:+$line; }udp: ${udp_ports}"
-    echo "$line"
+  if [ -n "$listeners" ]; then
+    echo "$listeners"
   else
     echo "listeners: none"
   fi
