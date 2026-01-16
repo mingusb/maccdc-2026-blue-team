@@ -81,6 +81,16 @@ summary() {
     echo "## ufw"
     $SUDO ufw status verbose | sed -n '1,4p' || true
   fi
+
+  echo "## quick verify (http + listeners)"
+  if [ -n "$SUDO" ]; then
+    $SUDO ss -tulpn 2>/dev/null | egrep ':(22|80)\b' | sed -n '1,4p' || true
+  else
+    ss -tulpn 2>/dev/null | egrep ':(22|80)\b' | sed -n '1,4p' || true
+  fi
+  if command -v curl >/dev/null 2>&1; then
+    curl -sS -I http://127.0.0.1/ | sed -n '1,5p' || true
+  fi
 }
 
 full() {
