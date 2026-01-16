@@ -5,8 +5,10 @@ set -euo pipefail
 
 MODE="full"
 SUDO=""
-if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-  SUDO="sudo -n"
+if [ "$(id -u)" -ne 0 ]; then
+  if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    SUDO="sudo -n"
+  fi
 fi
 
 usage() {
@@ -35,7 +37,10 @@ summary() {
   echo "## ecom summary"
   echo "host: $(hostname)"
   echo "os: ${os_id} ${os_ver}"
-  ip -brief addr 2>/dev/null | sed -n '1,3p' || true
+  ip_line="$(ip -brief addr 2>/dev/null | awk '$1 != \"lo\" {print; exit}')"
+  if [ -n "$ip_line" ]; then
+    echo "ip: $ip_line"
+  fi
 
   echo "## services"
   for svc in apache2 mysql mariadb ssh sshd; do
@@ -45,24 +50,25 @@ summary() {
   done
 
   echo "## listeners 22/80/443"
-  listeners_80443 | sed -n '1,6p' || true
   if [ -n "$SUDO" ]; then
-    $SUDO ss -tulpn 2>/dev/null | egrep ':(22)\b' | sed -n '1,2p' || true
+    $SUDO ss -tuln 2>/dev/null | egrep ':(22|80|443)\b' | sed -n '1,4p' || true
   else
-    ss -tulpn 2>/dev/null | egrep ':(22)\b' | sed -n '1,2p' || true
+    ss -tuln 2>/dev/null | egrep ':(22|80|443)\b' | sed -n '1,4p' || true
   fi
 
   if command -v apache2ctl >/dev/null 2>&1; then
     echo "## apache vhost (summary)"
-    apache2ctl -S 2>/dev/null | sed -n '1,6p' || true
+    apache2ctl -S 2>/dev/null | sed -n '2p' || true
   fi
 
   if command -v curl >/dev/null 2>&1; then
     echo "## local http"
-    curl -sS -I http://127.0.0.1/ | sed -n '1,6p' || true
+    http_code="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1/ || true)"
+    echo "http: ${http_code}"
     echo "## local https"
     if listeners_80443 | grep -q ':443\b'; then
-      curl -sS -k -I https://127.0.0.1/ | sed -n '1,6p' || true
+      https_code="$(curl -sS -k -o /dev/null -w '%{http_code}' https://127.0.0.1/ || true)"
+      echo "https: ${https_code}"
     else
       echo "https not listening on 443"
     fi
@@ -71,25 +77,16 @@ summary() {
   if command -v aa-status >/dev/null 2>&1; then
     echo "## apparmor"
     if [ -n "$SUDO" ]; then
-      $SUDO aa-status | sed -n '1,4p' || true
+      line="$($SUDO aa-status 2>/dev/null | head -n 1 || true)"
     else
-      aa-status | sed -n '1,4p' || true
+      line="$(aa-status 2>/dev/null | head -n 1 || true)"
     fi
+    [ -n "$line" ] && echo "$line"
   fi
 
   if command -v ufw >/dev/null 2>&1; then
     echo "## ufw"
-    $SUDO ufw status verbose | sed -n '1,4p' || true
-  fi
-
-  echo "## quick verify (http + listeners)"
-  if [ -n "$SUDO" ]; then
-    $SUDO ss -tulpn 2>/dev/null | egrep ':(22|80)\b' | sed -n '1,4p' || true
-  else
-    ss -tulpn 2>/dev/null | egrep ':(22|80)\b' | sed -n '1,4p' || true
-  fi
-  if command -v curl >/dev/null 2>&1; then
-    curl -sS -I http://127.0.0.1/ | sed -n '1,5p' || true
+    $SUDO ufw status | head -n 1 || true
   fi
 }
 

@@ -16,42 +16,71 @@ USAGE
 }
 
 summary() {
-  echo "## time"
-  date -u
+  local os_id="unknown"
+  local os_ver="unknown"
+  local ip_line=""
+  local route_line=""
+  local line=""
+  local count=""
+  local state=""
 
-  echo "## os"
-  [ -f /etc/os-release ] && grep -E '^(ID|VERSION_ID)=' /etc/os-release || true
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    os_id="${ID:-unknown}"
+    os_ver="${VERSION_ID:-unknown}"
+  fi
 
-  echo "## host"
-  hostname
+  echo "## summary"
+  echo "time: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+  echo "host: $(hostname)"
+  echo "os: ${os_id} ${os_ver}"
 
-  echo "## network"
-  ip -brief addr 2>/dev/null | sed -n '1,3p' || true
-  ip route 2>/dev/null | sed -n '1,3p' || true
+  ip_line="$(ip -brief addr 2>/dev/null | awk '$1 != \"lo\" {print; exit}')"
+  if [ -n "$ip_line" ]; then
+    echo "ip: $ip_line"
+  fi
+  route_line="$(ip route show default 2>/dev/null | head -n 1 || true)"
+  if [ -n "$route_line" ]; then
+    echo "route: $route_line"
+  fi
 
   echo "## listeners (key ports)"
   if [ -n "$SUDO" ]; then
-    $SUDO ss -tulpn 2>/dev/null | egrep ':(22|25|53|80|110|143|443|587|993|995)\b' | sed -n '1,8p' || true
+    $SUDO ss -tuln 2>/dev/null | awk 'NR>1 && /:(22|25|53|80|110|143|443|587|993|995)\\b/ {print}' | sed -n '1,5p' || true
   else
-    ss -tulpn 2>/dev/null | egrep ':(22|25|53|80|110|143|443|587|993|995)\b' | sed -n '1,8p' || true
+    ss -tuln 2>/dev/null | awk 'NR>1 && /:(22|25|53|80|110|143|443|587|993|995)\\b/ {print}' | sed -n '1,5p' || true
   fi
 
-  echo "## sshd config (key directives)"
-  grep -E '^(Port|PermitRootLogin|PasswordAuthentication|AllowUsers|AllowGroups|Match)' /etc/ssh/sshd_config 2>/dev/null || true
+  echo "## sshd (key directives)"
+  grep -E '^(Port|PermitRootLogin|PasswordAuthentication|AllowUsers|AllowGroups|Match)' /etc/ssh/sshd_config 2>/dev/null | sed -n '1,4p' || true
+  if [ -d /etc/ssh/sshd_config.d ]; then
+    count="$(ls -1 /etc/ssh/sshd_config.d 2>/dev/null | wc -l | tr -d ' ')"
+    echo "sshd_config.d files: ${count:-0}"
+  fi
 
   echo "## selinux / apparmor"
-  command -v sestatus >/dev/null 2>&1 && sestatus | head -n 4 || true
+  if command -v sestatus >/dev/null 2>&1; then
+    line="$(sestatus 2>/dev/null | grep -m 1 '^SELinux status' || true)"
+    [ -n "$line" ] && echo "$line"
+  fi
   if command -v aa-status >/dev/null 2>&1; then
     if [ -n "$SUDO" ]; then
-      $SUDO aa-status | head -n 4 || true
+      line="$($SUDO aa-status 2>/dev/null | head -n 1 || true)"
     else
-      aa-status | head -n 4 || true
+      line="$(aa-status 2>/dev/null | head -n 1 || true)"
     fi
+    [ -n "$line" ] && echo "$line"
   fi
 
   echo "## firewall"
-  command -v ufw >/dev/null 2>&1 && $SUDO ufw status verbose | head -n 3 || true
-  command -v firewall-cmd >/dev/null 2>&1 && $SUDO firewall-cmd --state | head -n 1 || true
+  if command -v ufw >/dev/null 2>&1; then
+    line="$($SUDO ufw status 2>/dev/null | head -n 1 || true)"
+    [ -n "$line" ] && echo "ufw: $line"
+  fi
+  if command -v firewall-cmd >/dev/null 2>&1; then
+    state="$($SUDO firewall-cmd --state 2>/dev/null | head -n 1 || true)"
+    [ -n "$state" ] && echo "firewalld: $state"
+  fi
 }
 
 full() {
