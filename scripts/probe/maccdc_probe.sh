@@ -45,10 +45,16 @@ summary() {
   fi
 
   echo "## listeners (key ports)"
+  local listeners=""
   if [ -n "$SUDO" ]; then
-    $SUDO ss -tuln 2>/dev/null | awk 'NR>1 && /:(22|25|53|80|110|143|443|587|993|995)\\b/ {print}' | sed -n '1,5p' || true
+    listeners="$($SUDO ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)\\b' | sed -n '1,5p' || true)"
   else
-    ss -tuln 2>/dev/null | awk 'NR>1 && /:(22|25|53|80|110|143|443|587|993|995)\\b/ {print}' | sed -n '1,5p' || true
+    listeners="$(ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)\\b' | sed -n '1,5p' || true)"
+  fi
+  if [ -n "$listeners" ]; then
+    echo "$listeners"
+  else
+    echo "listeners: none"
   fi
 
   echo "## sshd (key directives)"
