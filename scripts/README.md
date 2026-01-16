@@ -32,6 +32,9 @@ Firewalls
 - `scripts/firewalls/cisco_ftd_manage.sh` backs up/restores via CLI (dry-run first).
 - `scripts/firewalls/vyos_manage.sh` backs up/restores and can restrict SSH listen-address.
 
+Probe
+- `scripts/probe/` contains read-only probes for Linux, Windows, and firewall/router systems.
+
 Tools
 - `scripts/tools/rotate_credentials.py` rotates credentials into `secrets/credentials.md`.
 - `scripts/tools/run_service_checks.sh` runs service checks in batches.
@@ -40,4 +43,3 @@ Output
 - Baselines: `artifacts/baselines/<hostname>-<timestamp>/`.
 - Post-change: `artifacts/post_change/<hostname>-<timestamp>/`.
 - Backups and plans: `artifacts/backups/` and `artifacts/firewall_plans/`.
-
