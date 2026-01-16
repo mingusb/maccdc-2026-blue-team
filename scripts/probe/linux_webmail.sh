@@ -17,6 +17,52 @@ Usage: linux_webmail.sh [--summary|--full]
 USAGE
 }
 
+suspicious_procs_summary() {
+  local allowed_prefixes=(
+    "/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin"
+    "/usr/lib" "/usr/lib64" "/usr/libexec" "/lib" "/lib64" "/opt" "/snap"
+  )
+  local suspect_count=0
+  local shown=0
+  local max=3
+  local exe=""
+  local pid=""
+  local comm=""
+  local allowed=false
+  local suspects=()
+
+  while read -r pid comm; do
+    if [[ "$comm" == \[* ]]; then
+      continue
+    fi
+    exe="$(readlink "/proc/$pid/exe" 2>/dev/null || true)"
+    if [ -z "$exe" ]; then
+      continue
+    fi
+    allowed=false
+    for prefix in "${allowed_prefixes[@]}"; do
+      if [[ "$exe" == "$prefix"* ]]; then
+        allowed=true
+        break
+      fi
+    done
+    if ! $allowed; then
+      suspect_count=$((suspect_count + 1))
+      if [ $shown -lt $max ]; then
+        suspects+=("$pid $comm $exe")
+        shown=$((shown + 1))
+      fi
+    fi
+  done < <(ps -eo pid=,comm=)
+
+  if [ $suspect_count -eq 0 ]; then
+    echo "none"
+    return
+  fi
+  echo "count: $suspect_count"
+  printf '%s\n' "${suspects[@]}"
+}
+
 summary() {
   local os_id="unknown"
   local os_ver="unknown"
@@ -80,6 +126,9 @@ summary() {
     echo "## firewalld"
     $SUDO firewall-cmd --state 2>/dev/null || true
   fi
+
+  echo "## suspicious processes"
+  suspicious_procs_summary
 }
 
 full() {

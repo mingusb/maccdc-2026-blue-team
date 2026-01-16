@@ -21,4 +21,4 @@ Firewalls and router (wrappers)
 - `scripts/probe/cisco_ftd_probe.sh --pass <pass>` uses expect for password auth.
 - `scripts/probe/vyos_probe.sh` wraps `scripts/firewalls/vyos_manage.sh --mode list`.
 
-All probes are read-only. Use `--summary` on Linux probes for one-screen output.
+All probes are read-only. Use `--summary` on Linux probes for one-screen output. Summaries include a short suspicious-process check (executables outside standard system/program directories).

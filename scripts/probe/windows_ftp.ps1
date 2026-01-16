@@ -11,6 +11,38 @@ function Get-PrimaryIPv4 {
     Select-Object -First 1
 }
 
+function Write-SuspiciousProcessSummary {
+  $allowedPrefixes = @(
+    'C:\Windows\',
+    'C:\Program Files\',
+    'C:\Program Files (x86)\'
+  )
+  $suspects = @()
+  Get-Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path } |
+    ForEach-Object {
+      $path = $_.Path
+      $allowed = $false
+      foreach ($prefix in $allowedPrefixes) {
+        if ($path.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+          $allowed = $true
+          break
+        }
+      }
+      if (-not $allowed) {
+        $suspects += $_
+      }
+    }
+  if ($suspects.Count -eq 0) {
+    Write-Host "suspicious_procs: none"
+    return
+  }
+  Write-Host "suspicious_procs: $($suspects.Count)"
+  $suspects | Select-Object -First 3 | ForEach-Object {
+    Write-Host "proc: $($_.Id) $($_.ProcessName) $($_.Path)"
+  }
+}
+
 if ($Summary) {
   Write-Host "## ftp summary"
   $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
@@ -42,6 +74,7 @@ if ($Summary) {
   } else {
     Write-Host "listeners: none"
   }
+  Write-SuspiciousProcessSummary
   return
 }
 
