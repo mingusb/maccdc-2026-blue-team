@@ -9,14 +9,15 @@ Quick start
 2) Edit `config/services.json` to match NISE-scored services.
 3) Run `python3 tools/service_check.py` from a jump host to validate services after changes.
 4) Run baseline collection scripts on each host to capture a known-good snapshot.
-5) Use post-change verification scripts after any major change.
+5) Use hardening scripts in dry-run mode to plan safe changes.
+6) Use post-change verification scripts after any major change.
 
 What is here
 - `docs/` quick references, topology, inventory, and checklists.
 - `docs/runbooks/` safe hardening runbooks per system.
 - `docs/splunk_forwarder.md` Splunk forwarder setup guide.
 - `tools/` safe service checks and helper utilities.
-- `scripts/` host baseline collection and post-change verification.
+- `scripts/` host hardening, firewall helpers, Splunk forwarder installers, and verification tooling.
 - `templates/` inject response, incident report, change log, and firewall allow-list templates.
 
 Operational notes

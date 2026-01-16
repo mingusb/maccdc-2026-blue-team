@@ -14,6 +14,7 @@ Service check tool
 Post-change scripts
 - Linux: `scripts/linux/post_change_verify.sh` (service checks + local health snapshot).
 - Windows: `scripts/windows/post_change_verify.ps1` (service checks if python exists + local health snapshot).
+- Batch checks: `scripts/tools/run_service_checks.sh` for repeated service validation runs.
 
 Manual commands (fallback)
 - HTTP/HTTPS: `curl -i http://<host>/` and `curl -k -i https://<host>/`

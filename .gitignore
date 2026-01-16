@@ -6,6 +6,7 @@ secrets/
 # Local config overrides
 config/services.local.json
 config/team.json
+config/credentials.json
 
 # Logs and temp
 *.log
