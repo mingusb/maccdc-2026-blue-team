@@ -52,35 +52,24 @@ get_key() {
     fatal "--pass is required when no --key is provided"
   fi
   local resp
+  local resp_one
   resp=$(curl $(curl_opts) "https://${HOST}/api/?type=keygen&user=${USER}&password=${PASS}")
-  API_KEY=$(python3 - <<PY
-import sys, xml.etree.ElementTree as ET
-try:
-    root = ET.fromstring(sys.stdin.read())
-    key = root.findtext('.//key')
-    print(key or '')
-except Exception:
-    print('')
-PY
-<<< "$resp")
-  if [ -z "$API_KEY" ]; then
-    API_KEY="$(echo "$resp" | tr -d '\n' | sed -n 's/.*<key>\\([^<]*\\)<\\/key>.*/\\1/p' || true)"
+  resp_one="$(echo "$resp" | tr -d '\n')"
+  API_KEY=""
+  if [ "${resp_one#*<key>}" != "$resp_one" ]; then
+    API_KEY="${resp_one#*<key>}"
+    API_KEY="${API_KEY%%</key>*}"
   fi
   if [ -z "$API_KEY" ]; then
-    msg=$(python3 - <<'PY'
-import sys, xml.etree.ElementTree as ET
-try:
-    root = ET.fromstring(sys.stdin.read())
-    msg = root.findtext('.//msg') or ''
-    print(msg)
-except Exception:
-    print('')
-PY
-<<< "$resp")
+    msg=""
+    if [ "${resp_one#*<msg>}" != "$resp_one" ]; then
+      msg="${resp_one#*<msg>}"
+      msg="${msg%%</msg>*}"
+    fi
     if [ -n "$msg" ]; then
       fatal "Failed to obtain API key: $msg"
     fi
-    snippet="$(echo "$resp" | tr -d '\n' | head -c 200)"
+    snippet="$(echo "$resp_one" | head -c 200)"
     fatal "Failed to obtain API key. Response: ${snippet:-empty}"
   fi
 }
