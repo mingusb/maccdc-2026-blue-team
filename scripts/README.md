@@ -33,7 +33,7 @@ Firewalls
 - `scripts/firewalls/vyos_manage.sh` backs up/restores and can restrict SSH listen-address.
 
 Probe
-- `scripts/probe/` contains read-only probes for Linux, Windows, and firewall/router systems.
+- `scripts/probe/` contains read-only probes for Linux, Windows, and firewall/router systems (Linux probes support `--summary`).
 
 Tools
 - `scripts/tools/rotate_credentials.py` rotates credentials into `secrets/credentials.md`.

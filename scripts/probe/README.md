@@ -18,4 +18,4 @@ Firewalls and router (wrappers)
 - `scripts/probe/cisco_ftd_probe.sh` wraps `scripts/firewalls/cisco_ftd_manage.sh --mode list`.
 - `scripts/probe/vyos_probe.sh` wraps `scripts/firewalls/vyos_manage.sh --mode list`.
 
-All probes are read-only. Paste outputs for tuning.
+All probes are read-only. Use `--summary` on Linux probes for one-screen output.
