@@ -21,9 +21,9 @@ function Service-StatusLine {
   param([string]$Name)
   $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue
   if ($null -eq $svc) {
-    return "$Name: missing"
+    return "${Name}: missing"
   }
-  return "$Name: $($svc.Status)"
+  return "${Name}: $($svc.Status)"
 }
 
 function Write-SuspiciousProcessSummary {
