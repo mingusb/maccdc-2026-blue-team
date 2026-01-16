@@ -64,7 +64,21 @@ except Exception:
 PY
 <<< "$resp")
   if [ -z "$API_KEY" ]; then
-    fatal "Failed to obtain API key"
+    msg=$(python3 - <<'PY'
+import sys, xml.etree.ElementTree as ET
+try:
+    root = ET.fromstring(sys.stdin.read())
+    msg = root.findtext('.//msg') or ''
+    print(msg)
+except Exception:
+    print('')
+PY
+<<< "$resp")
+    if [ -n "$msg" ]; then
+      fatal "Failed to obtain API key: $msg"
+    fi
+    snippet="$(echo "$resp" | tr -d '\n' | head -c 200)"
+    fatal "Failed to obtain API key. Response: ${snippet:-empty}"
   fi
 }
 
