@@ -35,7 +35,7 @@ summary() {
   echo "host: $(hostname)"
   echo "os: ${os_id} ${os_ver}"
 
-  ip_line="$(ip -brief addr 2>/dev/null | awk '$1 != \"lo\" {print; exit}')"
+  ip_line="$(ip -brief addr 2>/dev/null | awk '$1 != "lo" {print; exit}')"
   if [ -n "$ip_line" ]; then
     echo "ip: $ip_line"
   fi
