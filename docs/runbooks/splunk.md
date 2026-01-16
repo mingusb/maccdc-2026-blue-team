@@ -36,6 +36,17 @@ Verification
 Rollback
 - Restore from the backed-up `etc/` directory if a change breaks inputs.
 
+Manual triage sequences (built-in commands)
+```
+sudo /opt/splunk/bin/splunk status
+sudo /opt/splunk/bin/splunk list user
+sudo /opt/splunk/bin/splunk show index
+sudo /opt/splunk/bin/splunk btool inputs list --debug | head -n 200
+sudo tail -n 200 /opt/splunk/var/log/splunk/splunkd.log
+ss -tulpn | grep -E ':(8000|8089|9997)\\b'
+systemctl status splunk --no-pager -l | head -n 12
+```
+
 Command sequence (run from repo root on Splunk host)
 1) `sudo bash scripts/probe/linux_splunk.sh --summary`
 2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-firewalld --allow-ports 22,8000,8089,9997`

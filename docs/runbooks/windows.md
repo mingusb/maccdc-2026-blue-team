@@ -46,6 +46,89 @@ Verification
 Rollback
 - Keep config exports and use the change log template.
 
+Manual triage sequences (built-in commands)
+
+Quick snapshot
+```
+whoami /all
+hostname
+systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+ipconfig /all
+route print
+```
+
+Sessions and logons
+```
+query user
+qwinsta
+net session
+```
+
+Processes, services, startup, tasks
+```
+Get-Process | Sort-Object CPU -Descending | Select-Object -First 15
+Get-Service | Where-Object { $_.Status -eq "Running" } | Sort-Object Name
+Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location
+Get-ScheduledTask | Where-Object { $_.State -eq "Ready" } | Select-Object -First 20
+```
+
+Users and admins
+```
+net user
+net localgroup administrators
+Get-LocalUser | Select-Object Name, Enabled, LastLogon
+```
+
+Network listeners
+```
+Get-NetTCPConnection -State Listen | Sort-Object LocalPort
+netstat -ano | findstr LISTENING
+```
+
+Firewall rules and profiles
+```
+Get-NetFirewallProfile
+Get-NetFirewallRule -Enabled True | Where-Object { $_.DisplayName -like "MACCDC*" }
+```
+
+Recent system and security logs
+```
+wevtutil qe Security /c:50 /rd:true /f:text
+wevtutil qe System /c:50 /rd:true /f:text
+```
+
+AD/DNS specific
+```
+dcdiag /q
+repadmin /replsummary
+nltest /dclist:CCDCteam.com
+Get-ADDomain
+Get-ADGroupMember "Domain Admins"
+Get-DnsServerZone
+```
+
+IIS web specific
+```
+Get-Website
+Get-WebBinding
+Get-WebConfigurationProperty -Filter /system.webServer/security/authentication/* -Name enabled
+Get-ChildItem "C:\\inetpub\\logs\\LogFiles" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 5
+```
+
+FTP specific
+```
+Get-Service FTPSVC
+Get-WebConfigurationProperty -Filter /system.ftpServer/security/authentication/* -Name enabled
+Get-WebConfigurationProperty -Filter /system.ftpServer/firewallSupport -Name passivePortRange
+```
+
+Windows 11 jump host specific
+```
+Get-LocalGroupMember -Group Administrators
+Get-ItemProperty "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+Get-ItemProperty "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+```
+
 Command sequences (run in elevated PowerShell from repo root)
 
 Common prep

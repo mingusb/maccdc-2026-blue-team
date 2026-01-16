@@ -43,6 +43,74 @@ Verification
 Rollback
 - Keep config backups and a clear last-change record in `templates/change_log.md`.
 
+Manual triage sequences (built-in commands)
+
+Quick snapshot
+```
+hostnamectl 2>/dev/null || cat /etc/os-release
+date
+who -a
+last -n 10
+```
+
+Network and listeners
+```
+ip -brief addr
+ip route
+ss -tulpn
+```
+
+Processes and services
+```
+ps auxf | head -n 40
+systemctl --type=service --state=running
+systemctl list-timers
+```
+
+Persistence checks
+```
+crontab -l
+sudo crontab -l
+ls -la /etc/cron.* /etc/cron.d
+systemctl list-unit-files --state=enabled
+ls -la /etc/systemd/system /lib/systemd/system
+```
+
+Auth and system logs
+```
+sudo journalctl -p warning..alert -n 200
+sudo journalctl -u ssh -n 200
+sudo tail -n 200 /var/log/auth.log
+sudo tail -n 200 /var/log/secure
+```
+Notes: use whichever log file exists for your distro.
+
+File and binary review
+```
+sudo find /tmp /var/tmp /dev/shm -type f -printf '%TY-%Tm-%Td %TT %p\n' | sort | tail -n 50
+sudo find /var/www /srv -type f -mtime -2 -ls | head -n 50
+sudo find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -ls 2>/dev/null | head -n 50
+```
+
+Package integrity spot check
+```
+sudo dpkg -V | head -n 50
+sudo rpm -Va | head -n 50
+```
+Notes: use `dpkg -V` on Debian/Ubuntu and `rpm -Va` on Fedora/Oracle Linux.
+
+Web stack (if applicable)
+```
+sudo apache2ctl -S 2>/dev/null || true
+sudo nginx -T 2>/dev/null | head -n 200 || true
+```
+
+Mail stack (if applicable)
+```
+sudo postconf -n 2>/dev/null | head -n 40 || true
+sudo dovecot -n 2>/dev/null | head -n 40 || true
+```
+
 Command sequences (run from repo root)
 
 Ubuntu Ecom (172.20.242.30)

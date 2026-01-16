@@ -19,6 +19,20 @@ Rule guidance
 - Do not change NAT mappings for scored services unless injected.
 - Avoid aggressive IPS policies early; test first.
 
+Manual checks (diagnostic CLI)
+```
+show version
+show running-config
+show interface ip brief
+show route
+show access-list
+show nat
+show logging
+show service-policy
+show conn count
+```
+Notes: if these fail, run `system support diagnostic-cli` first, then retry.
+
 Verification
 - Use `tools/service_check.py` from a jump host.
 - Confirm NISE stays green after each rule change.
@@ -26,10 +40,25 @@ Verification
 Rollback
 - Restore from the exported config if scoring breaks.
 
-Command sequence (run from repo root)
+Command sequences by situation (run from repo root)
+
+SSH works (password auth)
 1) `sudo bash scripts/probe/cisco_ftd_probe.sh --host <mgmt_ip> --user admin --pass '<password>'`
 2) `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode backup --host <mgmt_ip> --user admin --pass '<password>'`
 3) `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode dry-run --host <mgmt_ip> --user admin --pass '<password>'`
 
-Apply/restore (requires a CLI command file)
+SSH works (key auth)
+1) `sudo bash scripts/probe/cisco_ftd_probe.sh --host <mgmt_ip> --user admin --ssh-key <path>`
+2) `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode backup --host <mgmt_ip> --user admin --ssh-key <path>`
+3) `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode dry-run --host <mgmt_ip> --user admin --ssh-key <path>`
+
+Apply/restore a tested CLI command file
 - `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode restore --host <mgmt_ip> --user admin --pass '<password>' --restore-from <command_file> --allow-unsafe`
+
+SSH fails but console access works (diagnostic CLI)
+1) `show version`
+2) `show network`
+3) `system support diagnostic-cli`
+4) `show version`
+5) `exit`
+Next: enable SSH/management access in FDM, then use the SSH sequences above.
