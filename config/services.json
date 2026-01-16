@@ -1,6 +1,6 @@
 {
   "timeout_seconds": 5,
-  "team_number": "REPLACE_ME",
+  "team_number": "16",
   "notes": "Uses internal IPs so checks work without public IPs; update per NISE.",
   "services": [
     {
@@ -11,7 +11,7 @@
       "port": 80,
       "path": "/",
       "expect_statuses": [200, 301, 302],
-      "public_ip": "172.25.20.<team#>.11",
+      "public_ip": "172.25.36.11",
       "notes": "Ubuntu Ecom"
     },
     {
@@ -23,7 +23,7 @@
       "path": "/",
       "tls_verify": false,
       "expect_statuses": [200, 301, 302],
-      "public_ip": "172.25.20.<team#>.11",
+      "public_ip": "172.25.36.11",
       "notes": "Enable if NISE shows HTTPS scored"
     },
     {
@@ -34,7 +34,7 @@
       "port": 80,
       "path": "/",
       "expect_statuses": [200, 301, 302],
-      "public_ip": "172.25.20.<team#>.140",
+      "public_ip": "172.25.36.140",
       "notes": "Windows Web (IIS)"
     },
     {
@@ -46,7 +46,7 @@
       "path": "/",
       "tls_verify": false,
       "expect_statuses": [200, 301, 302],
-      "public_ip": "172.25.20.<team#>.140",
+      "public_ip": "172.25.36.140",
       "notes": "Windows Web (IIS)"
     },
     {
@@ -55,7 +55,7 @@
       "enabled": true,
       "host": "172.20.242.40",
       "port": 25,
-      "public_ip": "172.25.20.<team#>.39",
+      "public_ip": "172.25.36.39",
       "notes": "Fedora Webmail"
     },
     {
@@ -66,7 +66,7 @@
       "port": 110,
       "username": "REPLACE_ME",
       "password": "REPLACE_ME",
-      "public_ip": "172.25.20.<team#>.39",
+      "public_ip": "172.25.36.39",
       "notes": "Enable after setting credentials"
     },
     {
@@ -76,7 +76,7 @@
       "host": "172.20.240.102",
       "port": 53,
       "query_name": "example.com",
-      "public_ip": "172.25.20.<team#>.155",
+      "public_ip": "172.25.36.155",
       "notes": "AD/DNS"
     },
     {
@@ -85,7 +85,7 @@
       "enabled": false,
       "host": "172.20.240.102",
       "port": 53,
-      "public_ip": "172.25.20.<team#>.155",
+      "public_ip": "172.25.36.155",
       "notes": "Enable if TCP/53 is scored"
     },
     {
@@ -96,7 +96,7 @@
       "port": 21,
       "username": "REPLACE_ME",
       "password": "REPLACE_ME",
-      "public_ip": "172.25.20.<team#>.162",
+      "public_ip": "172.25.36.162",
       "notes": "Enable after setting credentials"
     }
   ]
