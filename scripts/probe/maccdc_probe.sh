@@ -47,9 +47,9 @@ summary() {
   echo "## listeners (key ports)"
   local listeners=""
   if [ -n "$SUDO" ]; then
-    listeners="$($SUDO ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)\\b' | sed -n '1,5p' || true)"
+    listeners="$($SUDO ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)([^0-9]|$)' | sed -n '1,5p' || true)"
   else
-    listeners="$(ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)\\b' | sed -n '1,5p' || true)"
+    listeners="$(ss -tuln 2>/dev/null | grep -E ':(22|25|53|80|110|143|443|587|993|995)([^0-9]|$)' | sed -n '1,5p' || true)"
   fi
   if [ -n "$listeners" ]; then
     echo "$listeners"
