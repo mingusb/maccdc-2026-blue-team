@@ -46,3 +46,36 @@ Verification
 Rollback
 - Keep config exports and use the change log template.
 
+Command sequences (run in elevated PowerShell from repo root)
+
+Common prep
+- `git pull`
+- `Set-ExecutionPolicy -Scope Process Bypass -Force`
+
+Windows 11 workstation (jump host)
+1) `.\scripts\probe\windows_wks.ps1 -Summary`
+2) `.\scripts\windows\harden_windows.ps1 -Mode dry-run -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 3389 -RestrictRdp -MgmtIps 172.20.240.0/24`
+3) `.\scripts\windows\harden_windows.ps1 -Mode apply -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 3389 -RestrictRdp -MgmtIps 172.20.240.0/24`
+4) `.\scripts\probe\windows_wks.ps1 -Summary`
+Notes: add `445` to `-AllowPorts` only if SMB is required on the jump host.
+
+Server 2019 Web (IIS)
+1) `.\scripts\probe\windows_iis.ps1 -Summary`
+2) `.\scripts\windows\harden_windows.ps1 -Mode dry-run -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 80,3389 -RestrictRdp -MgmtIps 172.20.240.0/24`
+3) `.\scripts\windows\harden_windows.ps1 -Mode apply -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 80,3389 -RestrictRdp -MgmtIps 172.20.240.0/24`
+4) `.\scripts\probe\windows_iis.ps1 -Summary`
+Notes: add `443` to `-AllowPorts` if HTTPS is scored.
+
+Server 2022 FTP
+1) `.\scripts\probe\windows_ftp.ps1 -Summary`
+2) `.\scripts\windows\harden_windows.ps1 -Mode dry-run -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 21,3389 -RestrictRdp -MgmtIps 172.20.240.0/24`
+3) `.\scripts\windows\harden_windows.ps1 -Mode apply -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 21,3389 -RestrictRdp -MgmtIps 172.20.240.0/24`
+4) `.\scripts\probe\windows_common.ps1 -Summary`
+Notes: add passive FTP ports to `-AllowPorts` if a range is configured.
+
+Server 2019 AD/DNS
+1) `.\scripts\probe\windows_ad_dns.ps1 -Summary`
+2) `.\scripts\windows\harden_windows.ps1 -Mode dry-run -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 53,88,135,139,389,445,464,636,3268,3269,3389 -AllowUdpPorts 53,88,123,389,464 -RestrictRdp -MgmtIps 172.20.240.0/24`
+3) `.\scripts\windows\harden_windows.ps1 -Mode apply -EnableFirewallAll -EnableDefender -EnableAuditing -AllowPorts 53,88,135,139,389,445,464,636,3268,3269,3389 -AllowUdpPorts 53,88,123,389,464 -RestrictRdp -MgmtIps 172.20.240.0/24`
+4) `.\scripts\probe\windows_ad_dns.ps1 -Summary`
+Notes: add `-RestrictWinrm -MgmtIps 172.20.240.0/24` if WinRM is in use.

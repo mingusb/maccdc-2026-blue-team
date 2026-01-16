@@ -25,3 +25,13 @@ Verification
 
 Rollback
 - Restore from the exported config if scoring breaks.
+
+Command sequence (run from repo root)
+1) `bash scripts/probe/palo_alto_probe.sh --summary --host <mgmt_ip> --pass '<password>'`
+2) `bash scripts/firewalls/palo_alto_manage.sh --mode backup --host <mgmt_ip> --pass '<password>'`
+3) `bash scripts/firewalls/palo_alto_manage.sh --mode dry-run --host <mgmt_ip> --pass '<password>' --mgmt-ips 172.20.242.0/24`
+4) `bash scripts/firewalls/palo_alto_manage.sh --mode harden --host <mgmt_ip> --pass '<password>' --mgmt-ips 172.20.242.0/24`
+5) `bash scripts/probe/palo_alto_probe.sh --summary --host <mgmt_ip> --pass '<password>'`
+
+Restore (if needed)
+- `bash scripts/firewalls/palo_alto_manage.sh --mode restore --host <mgmt_ip> --pass '<password>' --restore-from <backup_file>`

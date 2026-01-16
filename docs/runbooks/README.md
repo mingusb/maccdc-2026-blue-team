@@ -1,6 +1,7 @@
 Runbooks
 
 Use these for safe, reversible hardening. Keep NISE visible and verify scoring after every change.
+Each runbook includes exact command sequences to run in order.
 
 - linux.md: Ubuntu 24.04, Fedora 42, Oracle Linux 9 servers.
 - windows.md: Server 2019/2022 and Windows 11.
@@ -8,4 +9,3 @@ Use these for safe, reversible hardening. Keep NISE visible and verify scoring a
 - palo_alto.md: Palo Alto VM safe changes and rollback.
 - cisco_ftd.md: Cisco FTD VM safe changes and rollback.
 - vyos.md: VyOS router safe changes and rollback.
-

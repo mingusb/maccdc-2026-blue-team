@@ -15,6 +15,7 @@ param(
   [switch]$EnableDefender,
   [switch]$EnableAuditing,
   [int[]]$AllowPorts = @(),
+  [int[]]$AllowUdpPorts = @(),
   [string]$BackupDir = "",
   [string]$RestoreFrom = "",
   [switch]$AllowUnsafe
@@ -82,6 +83,7 @@ function Plan-Changes {
   if ($EnableDefender) { Write-Host "- Would enable Microsoft Defender and real-time protection" }
   if ($EnableAuditing) { Write-Host "- Would enable key audit policies" }
   if ($AllowPorts.Count -gt 0) { Write-Host "- Would allow inbound ports: $($AllowPorts -join ', ')" }
+  if ($AllowUdpPorts.Count -gt 0) { Write-Host "- Would allow inbound UDP ports: $($AllowUdpPorts -join ', ')" }
   if ($RestrictRdp) { Write-Host "- Would restrict RDP to mgmt IPs" }
   if ($BlockRdp) { Write-Host "- Would block RDP from non-mgmt IPs" }
   if ($RestrictWinrm) { Write-Host "- Would restrict WinRM to mgmt IPs" }
@@ -136,6 +138,9 @@ function Apply-Changes {
 
   foreach ($p in $AllowPorts) {
     New-NetFirewallRule -DisplayName "MACCDC-Allow-$p" -Direction Inbound -Action Allow -Protocol TCP -LocalPort $p -Profile Any -ErrorAction SilentlyContinue | Out-Null
+  }
+  foreach ($p in $AllowUdpPorts) {
+    New-NetFirewallRule -DisplayName "MACCDC-Allow-UDP-$p" -Direction Inbound -Action Allow -Protocol UDP -LocalPort $p -Profile Any -ErrorAction SilentlyContinue | Out-Null
   }
 
   if ($RestrictRdp) {

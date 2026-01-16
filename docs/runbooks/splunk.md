@@ -35,3 +35,12 @@ Verification
 
 Rollback
 - Restore from the backed-up `etc/` directory if a change breaks inputs.
+
+Command sequence (run from repo root on Splunk host)
+1) `sudo bash scripts/probe/linux_splunk.sh --summary`
+2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-firewalld --allow-ports 22,8000,8089,9997`
+3) `sudo bash scripts/linux/harden_linux.sh --mode apply --sshd-hardening --enable-firewalld --allow-ports 22,8000,8089,9997`
+4) `sudo bash scripts/probe/linux_splunk.sh --summary`
+
+Enable receiving (optional)
+- `/opt/splunk/bin/splunk enable listen 9997 -auth admin:<password>`

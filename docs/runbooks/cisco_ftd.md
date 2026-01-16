@@ -25,3 +25,11 @@ Verification
 
 Rollback
 - Restore from the exported config if scoring breaks.
+
+Command sequence (run from repo root)
+1) `sudo bash scripts/probe/cisco_ftd_probe.sh --host <mgmt_ip> --user admin --pass '<password>'`
+2) `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode backup --host <mgmt_ip> --user admin --pass '<password>'`
+3) `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode dry-run --host <mgmt_ip> --user admin --pass '<password>'`
+
+Apply/restore (requires a CLI command file)
+- `sudo bash scripts/firewalls/cisco_ftd_manage.sh --mode restore --host <mgmt_ip> --user admin --pass '<password>' --restore-from <command_file> --allow-unsafe`

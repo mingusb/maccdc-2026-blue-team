@@ -42,3 +42,31 @@ Verification
 
 Rollback
 - Keep config backups and a clear last-change record in `templates/change_log.md`.
+
+Command sequences (run from repo root)
+
+Ubuntu Ecom (172.20.242.30)
+1) `sudo bash scripts/probe/linux_ecom.sh --summary`
+2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-ufw --allow-ports 22,80,443`
+3) `sudo bash scripts/linux/harden_linux.sh --mode apply --sshd-hardening --enable-ufw --allow-ports 22,80,443`
+4) `sudo bash scripts/probe/linux_ecom.sh --summary`
+Notes: drop `443` if HTTPS is not scored.
+
+Fedora Webmail (172.20.242.40)
+1) `sudo bash scripts/probe/linux_webmail.sh --summary`
+2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-firewalld --allow-ports 22,25,110,143,587,993,995,80,443`
+3) `sudo bash scripts/linux/harden_linux.sh --mode apply --sshd-hardening --enable-firewalld --allow-ports 22,25,110,143,587,993,995,80,443`
+4) `sudo bash scripts/probe/linux_webmail.sh --summary`
+Notes: keep only scored ports; drop 80/443 if webmail is not in use.
+
+Oracle Linux Splunk (172.20.242.20)
+1) `sudo bash scripts/probe/linux_splunk.sh --summary`
+2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-firewalld --allow-ports 22,8000,8089,9997`
+3) `sudo bash scripts/linux/harden_linux.sh --mode apply --sshd-hardening --enable-firewalld --allow-ports 22,8000,8089,9997`
+4) `sudo bash scripts/probe/linux_splunk.sh --summary`
+
+Ubuntu workstation (jump host)
+1) `sudo bash scripts/probe/maccdc_probe.sh --summary`
+2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-ufw --allow-ports 22`
+3) `sudo bash scripts/linux/harden_linux.sh --mode apply --sshd-hardening --enable-ufw --allow-ports 22`
+4) `sudo bash scripts/probe/maccdc_probe.sh --summary`

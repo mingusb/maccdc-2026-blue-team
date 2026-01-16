@@ -19,3 +19,12 @@ Verification
 Rollback
 - Restore the saved config if routing breaks.
 
+Command sequence (run from repo root)
+1) `bash scripts/probe/vyos_probe.sh --host <mgmt_ip>`
+2) `bash scripts/firewalls/vyos_manage.sh --mode backup --host <mgmt_ip> --user vyos`
+3) `bash scripts/firewalls/vyos_manage.sh --mode dry-run --host <mgmt_ip> --user vyos --restrict-ssh --mgmt-ips <mgmt_ip1,mgmt_ip2>`
+4) `bash scripts/firewalls/vyos_manage.sh --mode apply --host <mgmt_ip> --user vyos --restrict-ssh --mgmt-ips <mgmt_ip1,mgmt_ip2>`
+5) `bash scripts/probe/vyos_probe.sh --host <mgmt_ip>`
+
+Restore (if needed)
+- `bash scripts/firewalls/vyos_manage.sh --mode restore --host <mgmt_ip> --user vyos --restore-from <backup_file>`
