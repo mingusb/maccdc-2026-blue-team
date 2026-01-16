@@ -109,11 +109,11 @@ probe() {
     fatal "--host is required"
   fi
   log "Probing SSH connectivity"
-  ssh_cmd "show version" >/dev/null 2>&1 || log "SSH probe failed"
+  ssh_cmd_interactive "show version" >/dev/null 2>&1 || log "SSH probe failed"
 }
 
 list_info() {
-  ssh_cmd "show version" || true
+  ssh_cmd_interactive "show version" || true
 }
 
 plan_changes() {
