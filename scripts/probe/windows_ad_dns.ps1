@@ -1,6 +1,73 @@
 <#
 AD/DNS probe (read-only).
 #>
+param(
+  [switch]$Summary
+)
+
+function Get-PrimaryIPv4 {
+  Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
+    Select-Object -First 1
+}
+
+function Format-FirewallProfiles {
+  $profiles = Get-NetFirewallProfile | Select-Object Name, Enabled
+  if (-not $profiles) { return "unknown" }
+  ($profiles | ForEach-Object { "$($_.Name)=$($_.Enabled)" }) -join " "
+}
+
+function Service-StatusLine {
+  param([string]$Name)
+  $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue
+  if ($null -eq $svc) {
+    return "$Name: missing"
+  }
+  return "$Name: $($svc.Status)"
+}
+
+if ($Summary) {
+  Write-Host "## ad/dns summary"
+  $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
+  if ($os) {
+    Write-Host "os: $($os.Caption) $($os.Version)"
+  }
+  Write-Host "host: $env:COMPUTERNAME"
+  $ip = Get-PrimaryIPv4
+  if ($ip) {
+    Write-Host "ip: $($ip.IPAddress)/$($ip.PrefixLength)"
+  }
+  Write-Host (Service-StatusLine -Name "NTDS")
+  Write-Host (Service-StatusLine -Name "DNS")
+
+  if (Get-Module -ListAvailable -Name ActiveDirectory) {
+    Import-Module ActiveDirectory
+    $domain = Get-ADDomain -ErrorAction SilentlyContinue
+    if ($domain) {
+      Write-Host "domain: $($domain.Name)"
+      Write-Host "forest: $($domain.Forest)"
+    }
+  } else {
+    Write-Host "domain: module unavailable"
+  }
+
+  if (Get-Command Get-DnsServerZone -ErrorAction SilentlyContinue) {
+    $zoneCount = (Get-DnsServerZone | Measure-Object).Count
+    Write-Host "dns_zones: $zoneCount"
+  } else {
+    Write-Host "dns_zones: module unavailable"
+  }
+
+  $dnsListen = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -eq 53 }
+  if ($dnsListen) {
+    Write-Host "listeners: 53"
+  } else {
+    Write-Host "listeners: none"
+  }
+  Write-Host "firewall: $(Format-FirewallProfiles)"
+  return
+}
+
 Write-Host "## AD and DNS services"
 Get-Service NTDS,DNS -ErrorAction SilentlyContinue | Format-Table -AutoSize
 
