@@ -166,7 +166,11 @@ list_summary() {
 }
 
 plan_changes() {
-  log "Planned changes"
+  if [ "$MODE" = "dry-run" ]; then
+    log "Planned changes"
+  else
+    log "Applying changes"
+  fi
   if [ "$MODE" = "apply" ] || [ "$MODE" = "restore" ]; then
     if [ -n "$RESTORE_FROM" ]; then
       echo "- Would import and load config from $RESTORE_FROM"
