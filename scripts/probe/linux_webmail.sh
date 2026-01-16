@@ -92,9 +92,9 @@ full() {
 
   echo "## listeners"
   if [ -n "$SUDO" ]; then
-    $SUDO ss -tulpn 2>/dev/null | egrep ':(25|110|143|587|993|995)\b' || true
+    $SUDO ss -tulpn 2>/dev/null | grep -E ':(25|110|143|587|993|995)\b' || true
   else
-    ss -tulpn 2>/dev/null | egrep ':(25|110|143|587|993|995)\b' || true
+    ss -tulpn 2>/dev/null | grep -E ':(25|110|143|587|993|995)\b' || true
   fi
 
   echo "## selinux"
