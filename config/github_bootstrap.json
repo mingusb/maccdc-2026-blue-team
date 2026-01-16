@@ -1,0 +1,59 @@
+{
+  "create": {
+    "auto_init": false,
+    "gitignore_template": "",
+    "license_template": "",
+    "team_id": null
+  },
+  "repo": {
+    "name": "maccdc-2026-blue-team",
+    "owner": "mingusb",
+    "visibility": "private",
+    "description": "MACCDC 2026 Blue Team tools, runbooks, and checklists",
+    "homepage": "",
+    "topics": [
+      "maccdc",
+      "ccdc",
+      "blue-team",
+      "cyber-defense",
+      "incident-response",
+      "competition"
+    ],
+    "settings": {
+      "has_issues": true,
+      "has_projects": true,
+      "has_wiki": false,
+      "has_discussions": false,
+      "is_template": false,
+      "allow_squash_merge": true,
+      "allow_merge_commit": false,
+      "allow_rebase_merge": true,
+      "allow_auto_merge": false,
+      "delete_branch_on_merge": true,
+      "allow_update_branch": true,
+      "use_squash_pr_title_as_default": true,
+      "web_commit_signoff_required": false
+    },
+    "security_and_analysis": null
+  },
+  "actions": {
+    "enabled": true,
+    "allowed_actions": "all",
+    "default_workflow_permissions": "read",
+    "can_approve_pull_request_reviews": false
+  },
+  "labels": [
+    {"name": "bug", "color": "d73a4a", "description": "Something is not working"},
+    {"name": "enhancement", "color": "a2eeef", "description": "New feature or request"},
+    {"name": "documentation", "color": "0075ca", "description": "Docs or examples"},
+    {"name": "security", "color": "b60205", "description": "Security-related issue"},
+    {"name": "ops", "color": "0e8a16", "description": "Operations and runbooks"}
+  ],
+  "branch_protection": null,
+  "environments": [],
+  "pages": null,
+  "enable_dependabot_alerts": false,
+  "enable_automated_security_fixes": false,
+  "private_vulnerability_reporting": null,
+  "code_scanning_default_setup": null
+}

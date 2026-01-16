@@ -1,0 +1,103 @@
+{
+  "timeout_seconds": 5,
+  "team_number": "REPLACE_ME",
+  "notes": "Uses internal IPs so checks work without public IPs; update per NISE.",
+  "services": [
+    {
+      "name": "ecom_http",
+      "type": "http",
+      "enabled": true,
+      "host": "172.20.242.30",
+      "port": 80,
+      "path": "/",
+      "expect_statuses": [200, 301, 302],
+      "public_ip": "172.25.20.<team#>.11",
+      "notes": "Ubuntu Ecom"
+    },
+    {
+      "name": "ecom_https",
+      "type": "https",
+      "enabled": true,
+      "host": "172.20.242.30",
+      "port": 443,
+      "path": "/",
+      "tls_verify": false,
+      "expect_statuses": [200, 301, 302],
+      "public_ip": "172.25.20.<team#>.11",
+      "notes": "Ubuntu Ecom"
+    },
+    {
+      "name": "win_web_http",
+      "type": "http",
+      "enabled": true,
+      "host": "172.20.240.101",
+      "port": 80,
+      "path": "/",
+      "expect_statuses": [200, 301, 302],
+      "public_ip": "172.25.20.<team#>.140",
+      "notes": "Windows Web (IIS)"
+    },
+    {
+      "name": "win_web_https",
+      "type": "https",
+      "enabled": true,
+      "host": "172.20.240.101",
+      "port": 443,
+      "path": "/",
+      "tls_verify": false,
+      "expect_statuses": [200, 301, 302],
+      "public_ip": "172.25.20.<team#>.140",
+      "notes": "Windows Web (IIS)"
+    },
+    {
+      "name": "smtp",
+      "type": "smtp",
+      "enabled": true,
+      "host": "172.20.242.40",
+      "port": 25,
+      "public_ip": "172.25.20.<team#>.39",
+      "notes": "Fedora Webmail"
+    },
+    {
+      "name": "pop3",
+      "type": "pop3",
+      "enabled": false,
+      "host": "172.20.242.40",
+      "port": 110,
+      "username": "REPLACE_ME",
+      "password": "REPLACE_ME",
+      "public_ip": "172.25.20.<team#>.39",
+      "notes": "Enable after setting credentials"
+    },
+    {
+      "name": "dns_udp",
+      "type": "dns",
+      "enabled": true,
+      "host": "172.20.240.102",
+      "port": 53,
+      "query_name": "example.com",
+      "public_ip": "172.25.20.<team#>.155",
+      "notes": "AD/DNS"
+    },
+    {
+      "name": "dns_tcp",
+      "type": "tcp",
+      "enabled": false,
+      "host": "172.20.240.102",
+      "port": 53,
+      "public_ip": "172.25.20.<team#>.155",
+      "notes": "Enable if TCP/53 is scored"
+    },
+    {
+      "name": "ftp",
+      "type": "ftp",
+      "enabled": false,
+      "host": "172.20.240.104",
+      "port": 21,
+      "username": "REPLACE_ME",
+      "password": "REPLACE_ME",
+      "public_ip": "172.25.20.<team#>.162",
+      "notes": "Enable after setting credentials"
+    }
+  ]
+}

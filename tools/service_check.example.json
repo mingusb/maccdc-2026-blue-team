@@ -1,0 +1,63 @@
+{
+  "timeout_seconds": 5,
+  "services": [
+    {
+      "name": "ecom_http",
+      "type": "http",
+      "enabled": true,
+      "host": "172.20.242.30",
+      "port": 80,
+      "path": "/",
+      "expect_statuses": [200, 301, 302],
+      "notes": "Ubuntu Ecom"
+    },
+    {
+      "name": "web_https",
+      "type": "https",
+      "enabled": true,
+      "host": "172.20.240.101",
+      "port": 443,
+      "path": "/",
+      "tls_verify": false,
+      "expect_statuses": [200, 301, 302],
+      "notes": "Windows Web (IIS)"
+    },
+    {
+      "name": "dns",
+      "type": "dns",
+      "enabled": true,
+      "host": "172.20.240.102",
+      "port": 53,
+      "query_name": "example.com",
+      "notes": "AD/DNS"
+    },
+    {
+      "name": "smtp",
+      "type": "smtp",
+      "enabled": true,
+      "host": "172.20.242.40",
+      "port": 25,
+      "notes": "Fedora Webmail"
+    },
+    {
+      "name": "pop3",
+      "type": "pop3",
+      "enabled": false,
+      "host": "172.20.242.40",
+      "port": 110,
+      "username": "REPLACE_ME",
+      "password": "REPLACE_ME",
+      "notes": "Enable after setting credentials"
+    },
+    {
+      "name": "ftp",
+      "type": "ftp",
+      "enabled": false,
+      "host": "172.20.240.104",
+      "port": 21,
+      "username": "REPLACE_ME",
+      "password": "REPLACE_ME",
+      "notes": "Enable after setting credentials"
+    }
+  ]
+}

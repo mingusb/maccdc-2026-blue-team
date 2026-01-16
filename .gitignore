@@ -1,0 +1,16 @@
+# Local outputs
+artifacts/
+backups/
+secrets/
+
+# Local config overrides
+config/services.local.json
+config/team.json
+
+# Logs and temp
+*.log
+*.tmp
+*.Zone.Identifier
+2026MACCDCQTeamPackv1.pdf:Zone.Identifier
+__pycache__/
+*.pyc
