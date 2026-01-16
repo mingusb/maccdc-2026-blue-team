@@ -15,8 +15,24 @@ for svc in apache2 nginx php-fpm php8.3-fpm php8.2-fpm; do
   fi
 done
 
+if command -v apache2ctl >/dev/null 2>&1; then
+  echo "## apache2 vhosts"
+  apache2ctl -S 2>/dev/null | head -n 12 || true
+fi
+
+echo "## database"
+for svc in mysql mariadb; do
+  if systemctl list-unit-files | grep -q "^${svc}\.service"; then
+    systemctl is-active "$svc" >/dev/null 2>&1 && systemctl status "$svc" --no-pager -l | sed -n '1,8p'
+  fi
+done
+
 echo "## web listeners"
-listeners="$(ss -tulpn 2>/dev/null | egrep ':(80|443)\b' || true)"
+if [ -n "$SUDO" ]; then
+  listeners="$($SUDO ss -tulpn 2>/dev/null | egrep ':(80|443)\b' || true)"
+else
+  listeners="$(ss -tulpn 2>/dev/null | egrep ':(80|443)\b' || true)"
+fi
 if [ -n "$listeners" ]; then
   echo "$listeners"
 else

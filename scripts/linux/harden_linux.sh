@@ -11,6 +11,7 @@ ENABLE_FIREWALLD=false
 SSHD_HARDEN=false
 RESTRICT_SSH=false
 DENY_SSH=false
+ALLOW_PORTS=""
 ENABLE_APPARMOR=false
 APPARMOR_PROFILES="usr.sbin.sshd"
 SELINUX_PERMISSIVE=false
@@ -37,6 +38,7 @@ Options:
   --sshd-hardening             Apply safe sshd config snippet
   --restrict-ssh               Restrict SSH via host firewall (requires --mgmt-ips)
   --deny-ssh                   Add a deny rule for SSH from non-mgmt IPs
+  --allow-ports <list>         Comma-separated allow list (e.g., 80,443,53/udp)
   --enable-ufw                 Enable UFW if present
   --enable-firewalld           Enable firewalld if present
   --enable-apparmor            Enable AppArmor and enforce profiles
@@ -129,6 +131,15 @@ plan_changes() {
   if $SSHD_HARDEN; then
     echo "- Would write /etc/ssh/sshd_config.d/99-maccdc.conf (safe sshd hardening)"
   fi
+  if [ -n "$ALLOW_PORTS" ]; then
+    echo "- Would allow inbound ports: $ALLOW_PORTS"
+    if $ENABLE_UFW; then
+      echo "- Would enable UFW if inactive"
+    fi
+    if $ENABLE_FIREWALLD; then
+      echo "- Would enable firewalld if inactive"
+    fi
+  fi
   if $RESTRICT_SSH; then
     echo "- Would restrict SSH to mgmt IPs via host firewall (port ${SSH_PORT})"
     if $DENY_SSH; then
@@ -166,6 +177,83 @@ ensure_safe_mgmt_ip() {
       fatal "Current SSH remote IP $remote_ip is not in --mgmt-ips; refusing to restrict SSH. Use --allow-unsafe to override."
     fi
   fi
+}
+
+normalize_port_proto() {
+  local item="$1"
+  if echo "$item" | grep -q '/'; then
+    echo "$item"
+  else
+    echo "${item}/tcp"
+  fi
+}
+
+apply_allow_ports_ufw() {
+  if [ -z "$ALLOW_PORTS" ]; then
+    return
+  fi
+  while read -r item; do
+    local port_proto
+    port_proto=$(normalize_port_proto "$item")
+    ufw allow "$port_proto" || true
+  done < <(split_csv "$ALLOW_PORTS")
+}
+
+apply_allow_ports_firewalld() {
+  if [ -z "$ALLOW_PORTS" ]; then
+    return
+  fi
+  while read -r item; do
+    local port_proto
+    port_proto=$(normalize_port_proto "$item")
+    firewall-cmd --permanent --add-port="$port_proto" >/dev/null
+  done < <(split_csv "$ALLOW_PORTS")
+}
+
+require_allow_ports_if_enabling() {
+  if $ALLOW_UNSAFE; then
+    return
+  fi
+  if [ -z "$ALLOW_PORTS" ]; then
+    fatal "Enabling firewall without --allow-ports can break scoring. Add allow ports or use --allow-unsafe."
+  fi
+}
+
+apply_allow_ports_only() {
+  if [ -z "$ALLOW_PORTS" ]; then
+    return
+  fi
+  if command -v ufw >/dev/null 2>&1; then
+    if ufw status | grep -q "Status: active"; then
+      apply_allow_ports_ufw
+    else
+      if $ENABLE_UFW; then
+        require_allow_ports_if_enabling
+        apply_allow_ports_ufw
+        ufw --force enable
+      else
+        log "UFW is installed but inactive; skipping allow-ports (use --enable-ufw to enable)."
+      fi
+    fi
+    return
+  fi
+  if command -v firewall-cmd >/dev/null 2>&1; then
+    if firewall-cmd --state >/dev/null 2>&1; then
+      apply_allow_ports_firewalld
+      firewall-cmd --reload >/dev/null
+    else
+      if $ENABLE_FIREWALLD; then
+        require_allow_ports_if_enabling
+        systemctl enable --now firewalld
+        apply_allow_ports_firewalld
+        firewall-cmd --reload >/dev/null
+      else
+        log "firewalld is installed but inactive; skipping allow-ports (use --enable-firewalld to enable)."
+      fi
+    fi
+    return
+  fi
+  log "No supported firewall (ufw/firewalld) found; skipping allow-ports."
 }
 
 backup_configs() {
@@ -237,6 +325,7 @@ apply_restrict_ssh() {
   fi
   if command -v ufw >/dev/null 2>&1; then
     if ufw status | grep -q "Status: active"; then
+      apply_allow_ports_ufw
       while read -r ip; do
         ufw allow from "$ip" to any port "$SSH_PORT" proto tcp || true
       done < <(split_csv "$MGMT_IPS")
@@ -245,6 +334,11 @@ apply_restrict_ssh() {
       fi
     else
       if $ENABLE_UFW; then
+        require_allow_ports_if_enabling
+        apply_allow_ports_ufw
+        while read -r ip; do
+          ufw allow from "$ip" to any port "$SSH_PORT" proto tcp || true
+        done < <(split_csv "$MGMT_IPS")
         ufw --force enable
       else
         log "UFW is installed but inactive; skipping SSH restriction (use --enable-ufw to enable)."
@@ -254,6 +348,7 @@ apply_restrict_ssh() {
   fi
   if command -v firewall-cmd >/dev/null 2>&1; then
     if firewall-cmd --state >/dev/null 2>&1; then
+      apply_allow_ports_firewalld
       while read -r ip; do
         firewall-cmd --permanent --add-rich-rule="rule family='ipv4' source address='${ip}' port protocol='tcp' port='${SSH_PORT}' accept" >/dev/null
       done < <(split_csv "$MGMT_IPS")
@@ -263,7 +358,16 @@ apply_restrict_ssh() {
       firewall-cmd --reload >/dev/null
     else
       if $ENABLE_FIREWALLD; then
+        require_allow_ports_if_enabling
         systemctl enable --now firewalld
+        apply_allow_ports_firewalld
+        while read -r ip; do
+          firewall-cmd --permanent --add-rich-rule="rule family='ipv4' source address='${ip}' port protocol='tcp' port='${SSH_PORT}' accept" >/dev/null
+        done < <(split_csv "$MGMT_IPS")
+        if $DENY_SSH; then
+          firewall-cmd --permanent --add-rich-rule="rule family='ipv4' port protocol='tcp' port='${SSH_PORT}' reject" >/dev/null
+        fi
+        firewall-cmd --reload >/dev/null
       else
         log "firewalld is installed but inactive; skipping SSH restriction (use --enable-firewalld to enable)."
       fi
@@ -316,6 +420,7 @@ parse_args() {
       --sshd-hardening) SSHD_HARDEN=true; shift ;;
       --restrict-ssh) RESTRICT_SSH=true; shift ;;
       --deny-ssh) DENY_SSH=true; shift ;;
+      --allow-ports) ALLOW_PORTS="$2"; shift 2 ;;
       --enable-ufw) ENABLE_UFW=true; shift ;;
       --enable-firewalld) ENABLE_FIREWALLD=true; shift ;;
       --enable-apparmor) ENABLE_APPARMOR=true; shift ;;
@@ -355,12 +460,15 @@ main() {
       need_root
       probe_system
       plan_changes
-      if ! $SSHD_HARDEN && ! $RESTRICT_SSH && ! $ENABLE_APPARMOR && ! $SELINUX_PERMISSIVE && ! $SELINUX_ENFORCE; then
+      if ! $SSHD_HARDEN && ! $RESTRICT_SSH && [ -z "$ALLOW_PORTS" ] && ! $ENABLE_APPARMOR && ! $SELINUX_PERMISSIVE && ! $SELINUX_ENFORCE; then
         fatal "No actions selected for apply."
       fi
       backup_configs
       if $SSHD_HARDEN; then
         apply_sshd_hardening
+      fi
+      if [ -n "$ALLOW_PORTS" ] && ! $RESTRICT_SSH; then
+        apply_allow_ports_only
       fi
       if $RESTRICT_SSH; then
         apply_restrict_ssh

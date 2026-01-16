@@ -32,7 +32,11 @@ for svc in ssh sshd apache2 nginx postfix dovecot vsftpd proftpd; do
 done
 
 echo "## listeners"
-ss -tulpn 2>/dev/null || ss -tuln || true
+if [ -n "$SUDO" ]; then
+  $SUDO ss -tulpn 2>/dev/null || $SUDO ss -tuln || true
+else
+  ss -tulpn 2>/dev/null || ss -tuln || true
+fi
 
 echo "## sshd config (key directives)"
 grep -E '^(Port|PermitRootLogin|PasswordAuthentication|AllowUsers|AllowGroups|Match)' /etc/ssh/sshd_config 2>/dev/null || true

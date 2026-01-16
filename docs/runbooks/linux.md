@@ -26,6 +26,7 @@ Host firewall
 - Keep inbound rules aligned with scored ports only.
 - Allow management ports only from jump host IPs.
 - Do not block TCP/53 if DNS is scored.
+- If enabling UFW/firewalld via `scripts/linux/harden_linux.sh`, pass `--allow-ports` for scored ports.
 
 Patching
 - Patch in small batches, one host at a time.
@@ -41,4 +42,3 @@ Verification
 
 Rollback
 - Keep config backups and a clear last-change record in `templates/change_log.md`.
-
