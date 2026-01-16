@@ -64,6 +64,9 @@ except Exception:
 PY
 <<< "$resp")
   if [ -z "$API_KEY" ]; then
+    API_KEY="$(echo "$resp" | tr -d '\n' | sed -n 's/.*<key>\\([^<]*\\)<\\/key>.*/\\1/p' || true)"
+  fi
+  if [ -z "$API_KEY" ]; then
     msg=$(python3 - <<'PY'
 import sys, xml.etree.ElementTree as ET
 try:
