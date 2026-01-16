@@ -5,14 +5,14 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: cisco_ftd_probe.sh --host <ip> [--user <user>] [--ssh-key <path>] [--ssh-port <port>]
+Usage: cisco_ftd_probe.sh --host <ip> [--user <user>] [--pass <pass>] [--ssh-key <path>] [--ssh-port <port>]
 USAGE
 }
 
 ARGS=("--mode" "list")
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --host|--user|--ssh-key|--ssh-port)
+    --host|--user|--pass|--ssh-key|--ssh-port)
       ARGS+=("$1" "$2")
       shift 2
       ;;

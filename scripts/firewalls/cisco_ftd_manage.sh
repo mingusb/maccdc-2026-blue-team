@@ -7,6 +7,7 @@ set -euo pipefail
 MODE="list"
 HOST=""
 USER="admin"
+PASS=""
 SSH_PORT=22
 SSH_KEY=""
 BACKUP_DIR=""
@@ -24,6 +25,7 @@ Options:
   --mode <list|dry-run|apply|backup|restore>
   --host <ip>             FTD management IP
   --user <user>           SSH username (default: admin)
+  --pass <pass>           SSH password (uses expect)
   --ssh-key <path>        SSH private key
   --ssh-port <port>       SSH port (default: 22)
   --backup-dir <path>     Backup directory
@@ -40,8 +42,66 @@ ssh_cmd() {
   local opts="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -p ${SSH_PORT}"
   if [ -n "$SSH_KEY" ]; then
     opts="$opts -i $SSH_KEY"
+    ssh $opts "$USER@$HOST" "$@"
+    return
+  fi
+  if [ -n "$PASS" ]; then
+    if ! command -v expect >/dev/null 2>&1; then
+      fatal "expect is required for --pass (install expect or use --ssh-key)"
+    fi
+    FTD_USER="$USER" FTD_HOST="$HOST" FTD_PORT="$SSH_PORT" FTD_PASS="$PASS" FTD_CMD="$*" expect <<'EOF'
+set timeout -1
+set user $env(FTD_USER)
+set host $env(FTD_HOST)
+set port $env(FTD_PORT)
+set pass $env(FTD_PASS)
+set cmd $env(FTD_CMD)
+spawn ssh -o StrictHostKeyChecking=accept-new -p $port $user@$host $cmd
+expect {
+  -re "(?i)assword:" { send -- "$pass\r"; exp_continue }
+  eof
+}
+EOF
+    return
   fi
   ssh $opts "$USER@$HOST" "$@"
+}
+
+ssh_cmd_interactive() {
+  local cmds="$1"
+  local opts="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -p ${SSH_PORT}"
+  if [ -n "$SSH_KEY" ]; then
+    opts="$opts -i $SSH_KEY"
+    ssh $opts "$USER@$HOST" <<EOF_CFG
+$cmds
+EOF_CFG
+    return
+  fi
+  if [ -n "$PASS" ]; then
+    if ! command -v expect >/dev/null 2>&1; then
+      fatal "expect is required for --pass (install expect or use --ssh-key)"
+    fi
+    FTD_USER="$USER" FTD_HOST="$HOST" FTD_PORT="$SSH_PORT" FTD_PASS="$PASS" FTD_CMDS="$cmds" expect <<'EOF'
+set timeout -1
+set user $env(FTD_USER)
+set host $env(FTD_HOST)
+set port $env(FTD_PORT)
+set pass $env(FTD_PASS)
+set cmds $env(FTD_CMDS)
+spawn ssh -o StrictHostKeyChecking=accept-new -p $port $user@$host
+expect {
+  -re "(?i)assword:" { send -- "$pass\r"; exp_continue }
+  -re {>|#} {}
+}
+send -- "$cmds\r"
+send -- "exit\r"
+expect eof
+EOF
+    return
+  fi
+  ssh $opts "$USER@$HOST" <<EOF_CFG
+$cmds
+EOF_CFG
 }
 
 probe() {
@@ -92,16 +152,13 @@ restore_configs() {
     fatal "Apply/restore requires --allow-unsafe due to FTD CLI variability."
   fi
   log "Applying CLI commands from: $RESTORE_FROM"
-  local opts="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -p ${SSH_PORT}"
-  if [ -n "$SSH_KEY" ]; then
-    opts="$opts -i $SSH_KEY"
-  fi
-  ssh $opts "$USER@$HOST" <<EOF_CFG
+  ssh_cmd_interactive "$(cat <<EOF_CFG
 configure terminal
 $(grep -v '^#' "$RESTORE_FROM")
 end
 write memory
 EOF_CFG
+)"
 }
 
 parse_args() {
@@ -110,6 +167,7 @@ parse_args() {
       --mode) MODE="$2"; shift 2 ;;
       --host) HOST="$2"; shift 2 ;;
       --user) USER="$2"; shift 2 ;;
+      --pass) PASS="$2"; shift 2 ;;
       --ssh-key) SSH_KEY="$2"; shift 2 ;;
       --ssh-port) SSH_PORT="$2"; shift 2 ;;
       --backup-dir) BACKUP_DIR="$2"; shift 2 ;;
