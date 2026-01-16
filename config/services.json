@@ -17,14 +17,14 @@
     {
       "name": "ecom_https",
       "type": "https",
-      "enabled": true,
+      "enabled": false,
       "host": "172.20.242.30",
       "port": 443,
       "path": "/",
       "tls_verify": false,
       "expect_statuses": [200, 301, 302],
       "public_ip": "172.25.20.<team#>.11",
-      "notes": "Ubuntu Ecom"
+      "notes": "Enable if NISE shows HTTPS scored"
     },
     {
       "name": "win_web_http",

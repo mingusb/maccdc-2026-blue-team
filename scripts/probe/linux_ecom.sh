@@ -16,17 +16,32 @@ for svc in apache2 nginx php-fpm php8.3-fpm php8.2-fpm; do
 done
 
 echo "## web listeners"
-ss -tulpn 2>/dev/null | egrep ':(80|443)\b' || true
+listeners="$(ss -tulpn 2>/dev/null | egrep ':(80|443)\b' || true)"
+if [ -n "$listeners" ]; then
+  echo "$listeners"
+else
+  echo "no listeners on 80/443"
+fi
 
 if command -v curl >/dev/null 2>&1; then
   echo "## local http"
   curl -sS -I http://127.0.0.1/ | head -n 10 || true
   echo "## local https"
-  curl -sS -k -I https://127.0.0.1/ | head -n 10 || true
+  if echo "$listeners" | grep -q ':443\b'; then
+    curl -sS -k -I https://127.0.0.1/ | head -n 10 || true
+  else
+    echo "https not listening on 443"
+  fi
 fi
 
 echo "## apparmor"
-command -v aa-status >/dev/null 2>&1 && aa-status | head -n 8 || true
+if command -v aa-status >/dev/null 2>&1; then
+  if [ -n "$SUDO" ]; then
+    $SUDO aa-status | head -n 8 || true
+  else
+    aa-status | head -n 8 || true
+  fi
+fi
 
 if command -v ufw >/dev/null 2>&1; then
   echo "## ufw"
