@@ -17,7 +17,7 @@ usage() {
 Usage: palo_alto_manage.sh [options]
 
 Modes:
-  list | dry-run | apply | backup | restore
+  list | summary | dry-run | apply | backup | restore
 
 Options:
   --mode <list|dry-run|apply|backup|restore>
@@ -89,6 +89,48 @@ probe() {
 
 list_info() {
   api_op "<show><system><info></info></system></show>" || true
+}
+
+extract_tag() {
+  local xml="$1"
+  local tag="$2"
+  local val=""
+  if [ "${xml#*<${tag}>}" != "$xml" ]; then
+    val="${xml#*<${tag}>}"
+    val="${val%%</${tag}>*}"
+  fi
+  echo "$val"
+}
+
+list_summary() {
+  local xml
+  local xml_one
+  local hostname ipaddr netmask gateway model serial swver uptime appver avver threatver
+  xml="$(api_op "<show><system><info></info></system></show>" || true)"
+  xml_one="$(echo "$xml" | tr -d '\n')"
+  hostname="$(extract_tag "$xml_one" "hostname")"
+  ipaddr="$(extract_tag "$xml_one" "ip-address")"
+  netmask="$(extract_tag "$xml_one" "netmask")"
+  gateway="$(extract_tag "$xml_one" "default-gateway")"
+  model="$(extract_tag "$xml_one" "model")"
+  serial="$(extract_tag "$xml_one" "serial")"
+  swver="$(extract_tag "$xml_one" "sw-version")"
+  uptime="$(extract_tag "$xml_one" "uptime")"
+  appver="$(extract_tag "$xml_one" "app-version")"
+  avver="$(extract_tag "$xml_one" "av-version")"
+  threatver="$(extract_tag "$xml_one" "threat-version")"
+
+  echo "## palo alto summary"
+  [ -n "$hostname" ] && echo "hostname: $hostname"
+  [ -n "$ipaddr" ] && echo "mgmt_ip: ${ipaddr}${netmask:+/${netmask}}"
+  [ -n "$gateway" ] && echo "gateway: $gateway"
+  [ -n "$model" ] && echo "model: $model"
+  [ -n "$serial" ] && echo "serial: $serial"
+  [ -n "$swver" ] && echo "sw_version: $swver"
+  [ -n "$appver" ] && echo "app_version: $appver"
+  [ -n "$avver" ] && echo "av_version: $avver"
+  [ -n "$threatver" ] && echo "threat_version: $threatver"
+  [ -n "$uptime" ] && echo "uptime: $uptime"
 }
 
 plan_changes() {
@@ -170,6 +212,7 @@ parse_args() {
       --secure) INSECURE=false; shift ;;
       --backup-dir) BACKUP_DIR="$2"; shift 2 ;;
       --restore-from) RESTORE_FROM="$2"; shift 2 ;;
+      --summary) MODE="summary"; shift ;;
       -h|--help) usage; exit 0 ;;
       *) fatal "Unknown argument: $1" ;;
     esac
@@ -182,6 +225,10 @@ main() {
     list)
       probe
       list_info
+      ;;
+    summary)
+      probe
+      list_summary
       ;;
     dry-run)
       probe

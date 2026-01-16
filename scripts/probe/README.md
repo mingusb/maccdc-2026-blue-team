@@ -15,6 +15,7 @@ Windows
 
 Firewalls and router (wrappers)
 - `scripts/probe/palo_alto_probe.sh` wraps `scripts/firewalls/palo_alto_manage.sh --mode list`.
+- `scripts/probe/palo_alto_probe.sh --summary` prints a one-screen summary.
 - `scripts/probe/cisco_ftd_probe.sh` wraps `scripts/firewalls/cisco_ftd_manage.sh --mode list`.
 - `scripts/probe/vyos_probe.sh` wraps `scripts/firewalls/vyos_manage.sh --mode list`.
 
