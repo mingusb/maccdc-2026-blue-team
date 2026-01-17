@@ -1,1 +1,15 @@
-https://swdownload.wustl.edu/Splunk/UniversalForwarder/Linux/64-bit/splunkforwarder-9.4.4-f627d88b766b.x86_64.rpm
+WHITELIST="192.168.1.10:22"; STATE=/tmp/ssh_audit.state; HOST=$(hostname);
+while true; do
+  ss -pt state established | awk '
+  /ESTAB/ {
+    split($5,d,":"); dst=d[1]; port=d[2];
+    if (port==22 || $0~/"ssh"/) print dst ":" port "|" $0
+  }' | while read line; do
+    dst=${line%%|*}
+    echo "$WHITELIST" | grep -qw "$dst" && continue
+    grep -qw "$line" "$STATE" 2>/dev/null && continue
+    echo "$line" >> "$STATE"
+    logger -p auth.warning "Outbound SSH detected host=$HOST dst=$dst $line"
+  done
+  sleep 5
+done &
