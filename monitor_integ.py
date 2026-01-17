@@ -3,63 +3,60 @@ import hashlib
 import sys
 import syslog
 
+DB_NAME = ".integ_db"
+
 def get_sha256(file_path):
-    # ROBUSTNESS CHECK: Skip sockets, device files, etc.
     if not os.path.isfile(file_path) or os.path.islink(file_path):
         return None
-
-    sha256_hash = hashlib.sha256()
     try:
+        sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
-    except (PermissionError, FileNotFoundError, OSError):
-        return None
+    except: return None
 
 def monitor(directories):
-    syslog.openlog(ident="FILE_INTEGRITY_MONITOR", facility=syslog.LOG_AUTH)
+    # Initialize Syslog
+    syslog.openlog(ident="FILE_INTEGRITY", facility=syslog.LOG_AUTH)
 
     for target_dir in directories:
-        db_path = os.path.join(target_dir, ".file_integ.db")
+        target_dir = os.path.abspath(target_dir)
+        db_path = os.path.join(target_dir, DB_NAME)
+        
         if not os.path.exists(db_path):
+            syslog.syslog(syslog.LOG_ERR, f"Integrity check failed: No database found in {target_dir}")
             continue
 
-        # Load Baseline
+        # 1. Load Baseline
         baseline = {}
-        try:
-            with open(db_path, "r") as f:
-                for line in f:
-                    if "|" in line:
-                        path, f_hash = line.strip().split("|")
-                        baseline[path] = f_hash
-        except Exception as e:
-            syslog.syslog(syslog.LOG_ERR, f"Error reading DB {db_path}: {e}")
-            continue
+        with open(db_path, "r") as f:
+            for line in f:
+                if "|" in line:
+                    path, f_hash = line.strip().split("|")
+                    baseline[path] = f_hash
 
-        # Scan Current State
-        current_files = {}
+        # 2. Scan Current State
+        current_state = {}
         for root, _, files in os.walk(target_dir):
-            if ".file_integ.db" in files: files.remove(".file_integ.db")
             for name in files:
+                if name == DB_NAME: continue
                 path = os.path.join(root, name)
-                # Only hash if it's a regular file
                 f_hash = get_sha256(path)
-                if f_hash:
-                    current_files[path] = f_hash
+                if f_hash: current_state[path] = f_hash
 
-        # Logic for Comparisons
-        # 1. Check for Missing or Modified
+        # 3. Compare and Alert
+        # Check for Missing or Modified files
         for path, old_hash in baseline.items():
-            if path not in current_files:
-                syslog.syslog(syslog.LOG_CRIT, f"MISSING FILE: {path}")
-            elif old_hash != current_files[path]:
-                syslog.syslog(syslog.LOG_CRIT, f"MODIFIED FILE: {path}")
+            if path not in current_state:
+                syslog.syslog(syslog.LOG_CRIT, f"ALERT: Missing file detected: {path}")
+            elif old_hash != current_state[path]:
+                syslog.syslog(syslog.LOG_CRIT, f"ALERT: File modified (hash mismatch): {path}")
 
-        # 2. Check for New files
-        for path in current_files:
+        # Check for New files
+        for path in current_state:
             if path not in baseline:
-                syslog.syslog(syslog.LOG_WARNING, f"NEW FILE: {path}")
+                syslog.syslog(syslog.LOG_WARNING, f"ALERT: New file detected: {path}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
