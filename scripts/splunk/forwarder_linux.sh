@@ -117,6 +117,9 @@ install_forwarder() {
     *.rpm)
       rpm -i "$INSTALLER"
       ;;
+    *.deb)
+      dpkg -i "$INSTALLER"
+      ;;
     *.tgz|*.tar.gz)
       tar -xzf "$INSTALLER" -C /opt
       ;;
