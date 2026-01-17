@@ -2,40 +2,43 @@ import os
 import hashlib
 import sys
 
+# Standard name for the baseline database
+DB_NAME = ".integ_db"
+
 def get_sha256(file_path):
-    # ROBUSTNESS CHECK: Only process regular files
-    # This ignores sockets, pipes, and device files
-    if not os.path.isfile(file_path) or os.path.islink(file_path):
-        return None
-        
-    sha256_hash = hashlib.sha256()
+    """Calculates SHA-256 only for regular files; ignores sockets/pipes."""
     try:
+        # Check if it's a regular file (not a socket, device, or directory)
+        if not os.path.isfile(file_path) or os.path.islink(file_path):
+            return None
+            
+        sha256_hash = hashlib.sha256()
         with open(file_path, "rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
-    except (PermissionError, FileNotFoundError, OSError):
+    except (PermissionError, OSError):
         return None
 
 def generate_baseline(directory):
-    db_path = os.path.join(directory, ".file_integ.db")
-    count = 0
+    directory = os.path.abspath(directory)
+    db_path = os.path.join(directory, DB_NAME)
+    
     with open(db_path, "w") as db:
-        for root, dirs, files in os.walk(directory):
-            if ".file_integ.db" in files:
-                files.remove(".file_integ.db")
-            
+        for root, _, files in os.walk(directory):
             for name in files:
+                if name == DB_NAME: continue
+                
                 filepath = os.path.join(root, name)
                 file_hash = get_sha256(filepath)
+                
                 if file_hash:
                     db.write(f"{filepath}|{file_hash}\n")
-                    count += 1
     
-    print(f"Baseline generated for {count} regular files in {db_path}")
+    print(f"Success: Baseline generated in {db_path}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python3 gen_baseline.py /path/to/directory")
+        print("Usage: sudo python3 gen_baseline.py /path/to/monitor")
     else:
         generate_baseline(sys.argv[1])
