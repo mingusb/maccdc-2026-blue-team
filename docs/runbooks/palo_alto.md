@@ -37,6 +37,21 @@ show log traffic last 50
 show jobs all
 ```
 
+Injection response scenarios (CLI)
+```
+# Admin changes and logins
+show log system direction equal backward subtype eq admin
+show admins
+
+# Mgmt plane exposure
+show interface management
+show config diff
+
+# Policy drift
+show running security-policy
+show running nat-policy
+```
+
 Verification
 - Use `tools/service_check.py` from a jump host.
 - Confirm NISE stays green after each rule change.

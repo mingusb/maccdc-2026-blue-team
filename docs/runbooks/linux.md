@@ -74,6 +74,47 @@ sudo iptables -t nat -S
 sudo firewall-cmd --list-all 2>/dev/null || true
 ```
 
+Injection response scenarios (built-in commands)
+
+New users, sudoers, SSH keys
+```
+sudo awk -F: '$3>=1000 {print $1":"$3":"$6":"$7}' /etc/passwd
+sudo grep -R "ALL" /etc/sudoers /etc/sudoers.d 2>/dev/null
+sudo visudo -c
+sudo find /home /root -name authorized_keys -type f -ls 2>/dev/null
+```
+
+Webshell indicators
+```
+sudo find /var/www /srv -type f -mtime -2 -ls | head -n 50
+sudo grep -R -E "base64_decode|gzinflate|eval\\(|shell_exec|system\\(" /var/www /srv 2>/dev/null | head -n 50
+```
+
+Persistence beyond cron
+```
+sudo find /etc/systemd/system /lib/systemd/system -type f -mtime -2 -ls 2>/dev/null | head -n 30
+sudo ls -la /etc/rc.local /etc/init.d 2>/dev/null
+sudo find /etc -name "*.service" -o -name "*.timer" 2>/dev/null | head -n 50
+```
+
+SUID/SGID and capabilities
+```
+sudo find / -xdev -type f \\( -perm -4000 -o -perm -2000 \\) -ls 2>/dev/null | head -n 50
+sudo getcap -r / 2>/dev/null | head -n 50
+```
+
+Kernel modules and suspicious binaries
+```
+lsmod | head -n 50
+sudo find /tmp /var/tmp /dev/shm -type f -mtime -2 -ls | head -n 50
+```
+
+DNS/hosts tampering
+```
+sudo grep -v '^#' /etc/hosts
+sudo cat /etc/resolv.conf
+```
+
 Verification
 - Run `python3 tools/service_check.py` from a jump host.
 - Check `ss -tulpn` and service status after any change.

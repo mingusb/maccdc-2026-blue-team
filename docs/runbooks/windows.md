@@ -146,6 +146,51 @@ Get-ItemProperty "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 Get-ItemProperty "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 ```
 
+Injection response scenarios (built-in commands)
+
+Suspicious logons, privilege use, log clearing
+```
+Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624,4625,4672,1102} -MaxEvents 50
+Get-WinEvent -FilterHashtable @{LogName='System';Id=104} -MaxEvents 20
+```
+
+New services and scheduled tasks
+```
+Get-WinEvent -FilterHashtable @{LogName='System';Id=7045} -MaxEvents 30
+Get-WinEvent -FilterHashtable @{LogName='Security';Id=4697,4698} -MaxEvents 30
+Get-ScheduledTask | Sort-Object Date -Descending | Select-Object -First 20
+```
+
+PowerShell abuse (if logging enabled)
+```
+Get-WinEvent -LogName 'Microsoft-Windows-PowerShell/Operational' -MaxEvents 50 | Select-Object -First 20
+```
+
+SMB pivot and share access
+```
+Get-WinEvent -FilterHashtable @{LogName='Security';Id=5140,5145} -MaxEvents 50
+Get-SmbShare
+Get-SmbSession
+```
+
+IIS webshell and site tampering
+```
+Get-ChildItem "C:\\inetpub\\wwwroot" -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 20
+Get-ChildItem "C:\\inetpub\\wwwroot" -Recurse -Include *.aspx,*.ashx,*.cshtml | Sort-Object LastWriteTime -Descending | Select-Object -First 20
+```
+
+FTP abuse
+```
+Get-ChildItem "C:\\inetpub\\logs\\LogFiles" -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 20
+```
+
+AD abuse (run on DC)
+```
+Get-WinEvent -FilterHashtable @{LogName='Security';Id=4720,4722,4724,4725,4726,4728,4732,4756,4769,4771,5136} -MaxEvents 50
+Get-ADGroupMember "Domain Admins"
+Get-ADUser -Filter * -Properties whenCreated | Sort-Object whenCreated -Descending | Select-Object -First 20 Name, whenCreated
+```
+
 Command sequences (run in elevated PowerShell from repo root)
 
 Common prep

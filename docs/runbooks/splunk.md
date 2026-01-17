@@ -54,6 +54,26 @@ ss -tulpn | grep -E ':(8000|8089|9997)\\b'
 systemctl status splunk --no-pager -l | head -n 12
 ```
 
+Injection response scenarios (built-in commands)
+```
+# Admin/role changes
+sudo /opt/splunk/bin/splunk list user
+sudo /opt/splunk/bin/splunk list role
+
+# Auth and REST activity
+sudo grep -i "login" /opt/splunk/var/log/splunk/audit.log | tail -n 50
+sudo grep -i "rest" /opt/splunk/var/log/splunk/splunkd.log | tail -n 50
+
+# New apps or scripted inputs
+ls -lt /opt/splunk/etc/apps | head -n 20
+sudo find /opt/splunk/etc/apps -type f -name "*.sh" -o -name "*.py" | head -n 50
+sudo /opt/splunk/bin/splunk btool inputs list --debug | grep -i script | head -n 20
+
+# HEC/forwarders exposure
+sudo /opt/splunk/bin/splunk btool inputs list --debug | grep -i http | head -n 20
+sudo /opt/splunk/bin/splunk list forward-server
+```
+
 Command sequence (run from repo root on Splunk host)
 1) `sudo bash scripts/probe/linux_splunk.sh --summary`
 2) `sudo bash scripts/linux/harden_linux.sh --mode dry-run --sshd-hardening --enable-firewalld --allow-ports 22,8000,8089,9997`

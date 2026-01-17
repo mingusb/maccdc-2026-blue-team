@@ -30,6 +30,22 @@ show service ssh
 show log
 ```
 
+Injection response scenarios (CLI)
+```
+# Users and SSH exposure
+show configuration commands | match login
+show configuration commands | match service ssh
+
+# NAT/firewall drift
+show nat source rules
+show nat destination rules
+show firewall
+
+# VPN tunnels
+show vpn ipsec sa
+show vpn l2tp
+```
+
 Verification
 - Confirm routing between subnets still works.
 - Re-check NISE after any change.

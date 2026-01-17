@@ -39,6 +39,24 @@ show conn count
 ```
 Notes: if these fail, run `system support diagnostic-cli` first, then retry.
 
+Injection response scenarios (diagnostic CLI)
+```
+# Admin and management exposure
+show running-config username
+show running-config aaa
+show running-config ssh
+show running-config http
+
+# Policy and NAT drift
+show access-list
+show nat
+show route
+
+# Logging and inspection
+show logging
+show service-policy
+```
+
 Verification
 - Use `tools/service_check.py` from a jump host.
 - Confirm NISE stays green after each rule change.
