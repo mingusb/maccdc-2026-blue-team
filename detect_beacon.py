@@ -1,65 +1,88 @@
 import socket
 import struct
 import time
+import os
 from collections import defaultdict
 
 # --- CONFIGURATION ---
-THRESHOLD = 10        # Packets to observe
-JITTER_LIMIT = 0.5    # Seconds of variance allowed
+THRESHOLD = 8         # Number of packets to analyze for a pattern
+JITTER_TOLERANCE = 0.4 # Seconds of variance allowed (Lower = more "robotic")
 
-# Storage: { (src_ip, dst_ip, port): [timestamps] }
+# Data store: { (src, dst, port): [timestamps] }
 flow_data = defaultdict(list)
 
-def get_sniffer():
-    # Windows native raw socket setup
-    if socket.os_name == 'nt':
+def setup_sniffer():
+    # Windows Implementation
+    if os.name == 'nt':
+        # Get the internal IP of the machine to bind the sniffer
+        hostname = socket.gethostname()
+        ip_addr = socket.gethostbyname(hostname)
+        
+        # Create raw socket
         s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
-        s.bind((socket.gethostbyname(socket.gethostname()), 0))
+        s.bind((ip_addr, 0))
+        
+        # Include IP headers in the capture
         s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+        
+        # Enable Promiscuous Mode (This is the "WinPcap-less" magic)
         s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
-    # Linux native raw socket setup
+        return s
+    
+    # Linux/Unix Implementation
     else:
+        # AF_PACKET allows us to see all traffic at the driver level on Linux
         s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
-    return s
+        return s
 
 def run_detector():
-    sniffer = get_sniffer()
-    print("Monitoring for UDP beacons using native sockets...")
+    sniffer = setup_sniffer()
+    print(f"[*] Sniffing for UDP beacons on {os.name}...")
 
     try:
         while True:
-            raw_data, addr = sniffer.recvfrom(65535)
+            raw_packet, _ = sniffer.recvfrom(65535)
             
-            # Manually parse the IP Header (First 20 bytes)
-            ip_header = raw_data[0:20]
-            iph = struct.unpack('!BBHHHBBH4s4s', ip_header)
+            # 1. Unpack IP Header (First 20 bytes)
+            # !BBHHHBBH4s4s is the format for the IP header
+            ip_header = struct.unpack('!BBHHHBBH4s4s', raw_packet[:20])
+            protocol = ip_header[6]
             
-            protocol = iph[6]
-            src_ip = socket.inet_ntoa(iph[8])
-            dst_ip = socket.inet_ntoa(iph[9])
-
-            if protocol == 17: # UDP is Protocol 17
-                # Parse UDP Header (8 bytes after IP header)
-                udp_header = raw_data[20:28]
-                udph = struct.unpack('!HHHH', udp_header)
-                dst_port = udph[1]
+            if protocol == 17:  # 17 = UDP
+                src_ip = socket.inet_ntoa(ip_header[8])
+                dst_ip = socket.inet_ntoa(ip_header[9])
                 
-                key = (src_ip, dst_ip, dst_port)
+                # 2. Unpack UDP Header (Next 8 bytes)
+                # Format: !HHHH (Source Port, Dest Port, Length, Checksum)
+                udp_raw = raw_packet[20:28]
+                udp_header = struct.unpack('!HHHH', udp_raw)
+                dst_port = udp_header[1]
+                
+                # 3. Analyze Timing
+                flow_key = (src_ip, dst_ip, dst_port)
                 now = time.time()
-                flow_data[key].append(now)
-
-                if len(flow_data[key]) >= THRESHOLD:
-                    timestamps = flow_data[key]
+                flow_data[flow_key].append(now)
+                
+                if len(flow_data[flow_key]) >= THRESHOLD:
+                    timestamps = flow_data[flow_key]
                     intervals = [timestamps[i] - timestamps[i-1] for i in range(1, len(timestamps))]
-                    jitter = max(intervals) - min(intervals)
-                    avg_int = sum(intervals) / len(intervals)
-
-                    if jitter < JITTER_LIMIT:
-                        print(f"[!] BEACON: {src_ip} -> {dst_ip}:{dst_port} | Interval: {avg_int:.2f}s | Jitter: {jitter:.2f}s")
                     
-                    flow_data[key] = timestamps[-THRESHOLD:]
+                    avg_interval = sum(intervals) / len(intervals)
+                    jitter = max(intervals) - min(intervals)
+                    
+                    # If the jitter is low, it's a heartbeat/beacon
+                    if jitter < JITTER_TOLERANCE:
+                        print(f"\n[!] BEACON DETECTED")
+                        print(f"    {src_ip} -> {dst_ip}:{dst_port}")
+                        print(f"    Interval: {avg_interval:.2f}s | Jitter: {jitter:.4f}s")
+                    
+                    # Keep the window sliding
+                    flow_data[flow_key] = timestamps[-THRESHOLD:]
 
     except KeyboardInterrupt:
-        print("\nStopping...")
+        if os.name == 'nt':
+            sniffer.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+        print("\nShutting down.")
 
-run_detector()
+if __name__ == "__main__":
+    run_detector()
