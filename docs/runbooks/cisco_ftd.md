@@ -19,6 +19,12 @@ Rule guidance
 - Do not change NAT mappings for scored services unless injected.
 - Avoid aggressive IPS policies early; test first.
 
+Attack surface & triage focus
+- Management plane exposure: FDM access, SSH enabled, allowed management IPs.
+- Config drift: access-lists/NAT changes, inspection policies disabled, logging disabled.
+- Admin accounts: new local users, password changes, weak auth.
+- Logging gaps: syslog destinations removed, event logging off.
+
 Manual checks (diagnostic CLI)
 ```
 show version

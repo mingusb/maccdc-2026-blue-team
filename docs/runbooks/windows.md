@@ -46,6 +46,13 @@ Verification
 Rollback
 - Keep config exports and use the change log template.
 
+Attack surface & triage focus
+- Common: RDP/WinRM exposure, new local admins, services with writable paths, scheduled tasks, startup keys, SMB shares, portproxy rules.
+- AD/DNS: new domain admins, new GPOs, replication errors, LDAP/Kerberos abuse.
+- IIS: web root changes, web.config edits, new app pools/sites, suspicious modules.
+- FTP: anonymous access changes, passive range mismatch, large file churn.
+- Windows 11 jump host: browser abuse, new admin membership, proxy/route changes.
+
 Manual triage sequences (built-in commands)
 
 Quick snapshot
@@ -83,6 +90,16 @@ Network listeners
 ```
 Get-NetTCPConnection -State Listen | Sort-Object LocalPort
 netstat -ano | findstr LISTENING
+```
+
+Pivot indicators
+```
+netsh interface portproxy show all
+Get-NetTCPConnection -State Established | Select-Object -First 20
+Get-SmbShare
+Get-SmbSession
+Get-CimInstance -Namespace root\subscription -ClassName __EventFilter
+Get-CimInstance -Namespace root\subscription -ClassName CommandLineEventConsumer
 ```
 
 Firewall rules and profiles

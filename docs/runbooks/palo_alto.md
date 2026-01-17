@@ -19,6 +19,12 @@ Rule guidance
 - Do not change NAT mappings for scored services unless injected.
 - Avoid aggressive IPS/Threat profiles early; test first.
 
+Attack surface & triage focus
+- Management plane exposure: mgmt IP allow list, HTTP/Telnet disabled, admin accounts.
+- API keys: rotate if leaked; restrict API to jump host IPs.
+- Config drift: security/NAT policy changes, new rules added below allow list, log settings disabled.
+- Logging gaps: system log cleared, traffic log disable.
+
 Manual checks (CLI)
 ```
 show system info

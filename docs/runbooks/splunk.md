@@ -36,6 +36,13 @@ Verification
 Rollback
 - Restore from the backed-up `etc/` directory if a change breaks inputs.
 
+Attack surface & triage focus
+- Web UI (8000) and management API (8089): new users/roles, weak auth, exposed to non-jump IPs.
+- Receiving port (9997): unexpected forwarders or data sources.
+- Apps and scripted inputs: new apps under `/opt/splunk/etc/apps`, suspicious scripts in `bin/`.
+- Config drift: `inputs.conf`, `outputs.conf`, `server.conf`, `web.conf`.
+- Large ingestion spikes or disabled indexes.
+
 Manual triage sequences (built-in commands)
 ```
 sudo /opt/splunk/bin/splunk status

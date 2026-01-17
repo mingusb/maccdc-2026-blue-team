@@ -12,6 +12,11 @@ Safe steps
 - Disable unused services (but keep SSH if needed).
 - Keep existing routes and NAT mappings unless injected.
 
+Attack surface & triage focus
+- Management plane: SSH listen-address, user accounts, allowed IPs.
+- Config drift: NAT rules, firewall rules, route changes.
+- Logging gaps: syslog targets removed, log levels reduced.
+
 Manual checks (CLI)
 ```
 show configuration

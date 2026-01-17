@@ -36,6 +36,44 @@ Logging
 - Forward auth and system logs to Splunk (see `docs/splunk_forwarder.md`).
 - Keep local logs intact for incident response.
 
+Attack surface & triage focus
+- SSH: brute force, new keys/users, sshd config drift.
+- Web: new/changed files in web roots, unexpected vhosts, suspicious PHP/CGI.
+- Mail: relay or auth changes, queue spikes, new mail users.
+- DB: new users, remote bind, data exfil attempts.
+- Persistence: new systemd units, timers, cron jobs, SUID binaries, shell rc edits.
+- Pivoting: new listening ports, IP forwarding/NAT, reverse tunnels.
+
+Triage sequences (built-in commands)
+```
+# SSH/auth
+sudo grep -Ei "sshd|Failed password|Accepted|Invalid user" /var/log/auth.log /var/log/secure 2>/dev/null | tail -n 50
+sudo ls -la /home/*/.ssh /root/.ssh 2>/dev/null
+sudo grep -R "PermitRootLogin|PasswordAuthentication" /etc/ssh/sshd_config /etc/ssh/sshd_config.d 2>/dev/null
+
+# Web root changes
+sudo find /var/www /srv -type f -mtime -2 -ls | head -n 50
+sudo apache2ctl -S 2>/dev/null || sudo nginx -T 2>/dev/null | head -n 80
+
+# Mail queues (if applicable)
+sudo postqueue -p 2>/dev/null | head -n 40
+sudo dovecot -n 2>/dev/null | head -n 40
+
+# Services and persistence
+systemctl --type=service --state=running
+systemctl list-unit-files --state=enabled
+systemctl list-timers
+crontab -l
+sudo crontab -l
+sudo ls -la /etc/cron.* /etc/cron.d
+
+# Pivot indicators
+ss -tulpn
+sysctl net.ipv4.ip_forward
+sudo iptables -t nat -S
+sudo firewall-cmd --list-all 2>/dev/null || true
+```
+
 Verification
 - Run `python3 tools/service_check.py` from a jump host.
 - Check `ss -tulpn` and service status after any change.
