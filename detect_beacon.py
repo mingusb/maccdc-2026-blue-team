@@ -1,54 +1,65 @@
+import socket
+import struct
 import time
 from collections import defaultdict
-from scapy.all import sniff, UDP, IP, conf
 
-# --- THE FIX: FORCE LAYER 3 MODE ---
-# This bypasses the L2/WinPcap error by using the OS native L3 socket
-conf.L3socket = conf.L3socket 
+# --- CONFIGURATION ---
+THRESHOLD = 10        # Packets to observe
+JITTER_LIMIT = 0.5    # Seconds of variance allowed
 
-# Detection Settings
-MIN_SAMPLES = 10      # Number of packets to observe before flagging
-JITTER_THRESHOLD = 0.5 # Max variance (in seconds) allowed for a 'beacon'
-IGNORE_PORTS = {53, 123, 137, 138, 1900, 5353} # Whitelist: DNS, NTP, NetBIOS
+# Storage: { (src_ip, dst_ip, port): [timestamps] }
+flow_data = defaultdict(list)
 
-# Storage: { (src, dst, dport): [timestamp1, timestamp2, ...] }
-flow_db = defaultdict(list)
+def get_sniffer():
+    # Windows native raw socket setup
+    if socket.os_name == 'nt':
+        s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
+        s.bind((socket.gethostbyname(socket.gethostname()), 0))
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+        s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
+    # Linux native raw socket setup
+    else:
+        s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    return s
 
-def detect_beacon(pkt):
-    # Only process IP + UDP (Layer 3 and 4)
-    if pkt.haslayer(IP) and pkt.haslayer(UDP):
-        ip_layer = pkt[IP]
-        udp_layer = pkt[UDP]
-        
-        if udp_layer.dport in IGNORE_PORTS:
-            return
+def run_detector():
+    sniffer = get_sniffer()
+    print("Monitoring for UDP beacons using native sockets...")
 
-        flow_key = (ip_layer.src, ip_layer.dst, udp_layer.dport)
-        now = time.time()
-        
-        history = flow_db[flow_key]
-        history.append(now)
-
-        if len(history) >= MIN_SAMPLES:
-            # Calculate time intervals between packets
-            intervals = [history[i] - history[i-1] for i in range(1, len(history))]
+    try:
+        while True:
+            raw_data, addr = sniffer.recvfrom(65535)
             
-            avg_gap = sum(intervals) / len(intervals)
-            # Jitter = Difference between the longest and shortest interval observed
-            jitter = max(intervals) - min(intervals)
+            # Manually parse the IP Header (First 20 bytes)
+            ip_header = raw_data[0:20]
+            iph = struct.unpack('!BBHHHBBH4s4s', ip_header)
+            
+            protocol = iph[6]
+            src_ip = socket.inet_ntoa(iph[8])
+            dst_ip = socket.inet_ntoa(iph[9])
 
-            # Low jitter (consistency) suggests an automated beacon
-            if jitter < JITTER_THRESHOLD:
-                print(f"\n[!] ALERT: UDP Beacon Detected (Native L3)")
-                print(f"    Flow:     {flow_key[0]} -> {flow_key[1]}:{flow_key[2]}")
-                print(f"    Interval: ~{avg_gap:.2f}s")
-                print(f"    Jitter:   {jitter:.4f}s")
+            if protocol == 17: # UDP is Protocol 17
+                # Parse UDP Header (8 bytes after IP header)
+                udp_header = raw_data[20:28]
+                udph = struct.unpack('!HHHH', udp_header)
+                dst_port = udph[1]
+                
+                key = (src_ip, dst_ip, dst_port)
+                now = time.time()
+                flow_data[key].append(now)
 
-            # Maintain a sliding window to save memory
-            flow_db[flow_key] = history[-MIN_SAMPLES:]
+                if len(flow_data[key]) >= THRESHOLD:
+                    timestamps = flow_data[key]
+                    intervals = [timestamps[i] - timestamps[i-1] for i in range(1, len(timestamps))]
+                    jitter = max(intervals) - min(intervals)
+                    avg_int = sum(intervals) / len(intervals)
 
-print("Starting UDP Beacon Detector using Native Layer 3 Sockets...")
-print("Note: Run as Administrator (Windows) or Sudo (Linux).")
+                    if jitter < JITTER_LIMIT:
+                        print(f"[!] BEACON: {src_ip} -> {dst_ip}:{dst_port} | Interval: {avg_int:.2f}s | Jitter: {jitter:.2f}s")
+                    
+                    flow_data[key] = timestamps[-THRESHOLD:]
 
-# 'store=0' ensures we don't store packets in RAM
-sniff(filter="udp", prn=detect_beacon, store=0)
+    except KeyboardInterrupt:
+        print("\nStopping...")
+
+run_detector()
