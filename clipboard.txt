@@ -1,4 +1,4 @@
-WHITELIST="192.168.1.10:22"; STATE=/tmp/ssh_audit.state; HOST=$(hostname);
+WHITELIST=""; STATE=/tmp/ssh_audit.state; HOST=$(hostname);
 while true; do
   ss -pt state established | awk '
   /ESTAB/ {
