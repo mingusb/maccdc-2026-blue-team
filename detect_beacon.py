@@ -2,55 +2,55 @@ import time
 from collections import defaultdict
 from scapy.all import sniff, UDP, IP, conf
 
-# --- L3 CONFIGURATION ---
-# This tells Scapy to ignore the lack of WinPcap/Npcap 
-# and use the OS's native Layer 3 raw sockets.
+# --- FORCE LAYER 3 MODE ---
+# This bypasses the need for WinPcap/Npcap by using the OS native L3 socket
 conf.L3socket = conf.L3socket 
 
-# Configuration Constants
-MIN_PACKETS = 10      # Need 10 packets to establish a pattern
-MAX_JITTER = 0.5      # Max seconds of variation allowed for a "beacon"
-IGNORE_PORTS = {53, 123, 1900} # DNS, NTP, SSDP (Common noise)
+# Detection Settings
+MIN_SAMPLES = 10      # Number of packets needed to verify a pattern
+MAX_JITTER = 0.5      # Maximum variance (in seconds) allowed for a 'beacon'
+IGNORE_PORTS = {53, 123, 137, 138, 1900} # Whitelist: DNS, NTP, NetBIOS, SSDP
 
-# Storage: {(src, dst, dport): [timestamp1, timestamp2, ...]}
-flow_history = defaultdict(list)
+# Data Store: { (src, dst, dport): [timestamp1, timestamp2, ...] }
+flow_db = defaultdict(list)
 
-def detect_beacon(pkt):
-    # We check for IP layer directly since L2 (Ethernet) is unavailable
+def detect_udp_beacon(pkt):
+    # Ensure we have IP and UDP layers (L2 is ignored/absent)
     if pkt.haslayer(IP) and pkt.haslayer(UDP):
-        ip_layer = pkt[IP]
-        udp_layer = pkt[UDP]
+        ip_src = pkt[IP].src
+        ip_dst = pkt[IP].dst
+        port_dst = pkt[UDP].dport
         
-        if udp_layer.dport in IGNORE_PORTS:
+        if port_dst in IGNORE_PORTS:
             return
 
-        flow_id = (ip_layer.src, ip_layer.dst, udp_layer.dport)
+        flow_key = (ip_src, ip_dst, port_dst)
         now = time.time()
         
-        history = flow_history[flow_id]
-        history.append(now)
+        # Track timing
+        flow_db[flow_key].append(now)
+        timestamps = flow_db[flow_key]
 
-        if len(history) >= MIN_PACKETS:
-            # Calculate the time difference between consecutive packets
-            intervals = [history[i] - history[i-1] for i in range(1, len(history))]
+        if len(timestamps) >= MIN_SAMPLES:
+            # Calculate time differences between packets
+            intervals = [timestamps[i] - timestamps[i-1] for i in range(1, len(timestamps))]
             
-            avg_gap = sum(intervals) / len(intervals)
-            # Jitter is the difference between the longest and shortest interval
+            avg_interval = sum(intervals) / len(intervals)
+            # Jitter = Difference between slowest and fastest packet in the window
             jitter = max(intervals) - min(intervals)
 
-            # If the timing is very consistent, it's a beacon
+            # If jitter is low, the timing is automated (a beacon)
             if jitter < MAX_JITTER:
-                print(f"\n[!] ALERT: UDP Beacon Pattern Detected")
-                print(f"    Source:      {flow_id[0]}")
-                print(f"    Destination: {flow_id[1]}:{flow_id[2]}")
-                print(f"    Avg Gap:     {avg_gap:.3f}s")
-                print(f"    Jitter:      {jitter:.3f}s")
+                print(f"\n[!] ALERT: UDP Beacon Detected")
+                print(f"    Flow:     {ip_src} -> {ip_dst}:{port_dst}")
+                print(f"    Interval: {avg_interval:.3f}s")
+                print(f"    Jitter:   {jitter:.3f}s")
 
-            # Keep memory usage low by sliding the window
-            flow_history[flow_id] = history[-(MIN_PACKETS):]
+            # Maintain a sliding window to keep memory usage low
+            flow_db[flow_key] = timestamps[-MIN_SAMPLES:]
 
-print("Starting Layer 3 UDP Sniffer...")
-print("Note: On Windows, ensure you are running as Administrator.")
+print("Scanning for UDP beacons at Layer 3...")
+print("Administrator/Sudo privileges are required for raw sockets.")
 
-# Use 'store=0' to prevent memory exhaustion
-sniff(filter="udp", prn=detect_beacon, store=0)
+# sniff() will now use the L3 socket defined in conf.L3socket
+sniff(filter="udp", prn=detect_udp_beacon, store=0)
